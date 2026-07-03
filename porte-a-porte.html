@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Porte à porte</title>
+<link rel="stylesheet" href="lib/leaflet.css" />
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1c1d21; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#378ADD; --accent-bg:#e6f1fb;
+    --interesse:#1D9E75; --visite:#378ADD; --absent:#EF9F27; --refus:#E24B4A; --todo:#f4f5f7;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  #app{display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;background:var(--bg);position:relative}
+  header{padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  header h1{font-size:17px;margin:0;font-weight:600;white-space:nowrap}
+  .search{flex:1;min-width:70px;max-width:180px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;background:#fff}
+  .search:focus{outline:none;border-color:var(--accent)}
+  header .stat{font-size:12px;color:var(--muted)}
+  .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+  .tabs button{flex:1;border:0;background:none;padding:11px;font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .view{flex:1;overflow:auto;display:none}
+  .view.active{display:block}
+  #map{width:100%;height:100%}
+  #mapWrap{position:relative;height:100%}
+  .hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(28,29,33,.85);color:#fff;font-size:12px;padding:7px 12px;border-radius:20px;z-index:500;white-space:nowrap;pointer-events:none}
+  .list{padding:12px}
+  .bcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer}
+  .bcard .row{display:flex;align-items:center;gap:10px}
+  .bicon{width:38px;height:38px;border-radius:9px;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .bcard .name{font-weight:600;font-size:15px;margin:0}
+  .bcard .sub{font-size:12px;color:var(--muted);margin:2px 0 0}
+  .bcard .count{margin-left:auto;text-align:right}
+  .bcard .count b{font-size:17px}
+  .bar{height:6px;background:var(--bg);border-radius:99px;overflow:hidden;margin-top:9px}
+  .bar span{display:block;height:100%;background:var(--interesse)}
+  .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px}
+  /* detail */
+  .detail{padding:14px}
+  .back{background:none;border:0;color:var(--accent);font-size:14px;padding:6px 0;cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:6px}
+  .floor{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .floor .lab{width:40px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0}
+  .addoor{width:26px;height:26px;flex-shrink:0;border:1px solid var(--line);background:#fff;border-radius:7px;color:var(--accent);font-size:18px;font-weight:600;line-height:1;cursor:pointer;padding:0}
+  .addoor:active,.delfloor:active{transform:scale(.94)}
+  .delfloor{width:26px;height:26px;flex-shrink:0;border:1px solid #f0b3b3;background:#fff;border-radius:7px;color:#E24B4A;font-size:17px;font-weight:600;line-height:1;cursor:pointer;padding:0;margin-left:6px}
+  .doors{display:flex;gap:6px;flex:1}
+  .door{flex:1;min-width:0;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer;border:0;position:relative}
+  .door.todo{background:var(--todo);border:1px dashed #cbd0d6;color:#9aa0a6}
+  .door .note-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .sw{width:12px;height:12px;border-radius:3px}
+  /* fab + buttons */
+  .fab{position:absolute;right:16px;bottom:16px;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:0;font-size:28px;box-shadow:0 4px 14px rgba(55,138,221,.45);cursor:pointer;z-index:600;display:flex;align-items:center;justify-content:center}
+  .btn{width:100%;padding:12px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px}
+  .btn.ghost{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+  .overlay.show{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 18px 24px;animation:up .2s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.5}to{transform:translateY(0);opacity:1}}
+  .sheet h3{margin:0 0 14px;font-size:16px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:15px;font-family:inherit;background:#fff}
+  .statusgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .statusgrid button{padding:11px;border-radius:9px;border:2px solid transparent;color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+  .sqbtn{flex:1;padding:11px 8px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:13px;font-family:inherit;cursor:pointer;line-height:1.2}
+  .sqbtn.sel{background:#EF9F27;color:#fff;border-color:#EF9F27;font-weight:600}
+  .statusgrid button.sel{outline:3px solid rgba(0,0,0,.15)}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+  .metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .metric .n{font-size:26px;font-weight:600}
+  .metric .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .metric .n small{font-size:14px;color:var(--muted);font-weight:400}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Porte à porte</h1>
+    <input id="search" class="search" placeholder="N° + M/A — ex : 3M" inputmode="text"
+           onkeydown="if(event.key==='Enter')goToCage()" oninput="this.style.borderColor=''" />
+    <div class="stat" id="hstat"></div>
+  </header>
+  <div class="tabs">
+    <button data-tab="map" class="active">Carte</button>
+    <button data-tab="list">Bâtiments</button>
+    <button data-tab="stats">Stats</button>
+  </div>
+
+  <div class="view active" id="view-map">
+    <div id="mapWrap">
+      <div id="map"></div>
+      <div class="hint" id="hint">Touchez la carte pour ajouter un bâtiment</div>
+    </div>
+  </div>
+
+  <div class="view" id="view-list">
+    <div class="list" id="blist"></div>
+  </div>
+
+  <div class="view" id="view-stats">
+    <div class="metrics" id="metrics"></div>
+    <div style="padding:0 12px 20px">
+      <button class="btn" onclick="exportCSV()">Exporter en CSV (Excel)</button>
+      <button class="btn ghost" onclick="backupJSON()">💾 Sauvegarder (fichier)</button>
+      <button class="btn ghost" onclick="document.getElementById('fileLoad').click()">📂 Charger une sauvegarde</button>
+      <input type="file" id="fileLoad" accept=".json" style="display:none" onchange="restoreJSON(this)" />
+      <button class="btn ghost" onclick="resetStates()">Réinitialiser les visites</button>
+    </div>
+  </div>
+
+  <!-- detail bâtiment -->
+  <div class="view" id="view-detail">
+    <div class="detail" id="detail"></div>
+  </div>
+</div>
+
+<!-- modal ajout cage d'escalier -->
+<div class="overlay" id="ovBuilding">
+  <div class="sheet">
+    <h3>Nouvelle cage d'escalier</h3>
+    <label>Square</label>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button type="button" id="sqM" class="sqbtn" onclick="pickSquare('M')">Square des Moulineaux</button>
+      <button type="button" id="sqA" class="sqbtn" onclick="pickSquare('A')">Square de l'Avre</button>
+    </div>
+    <label>Numéro de la cage</label>
+    <input id="fNum" type="number" min="1" />
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label>Nb d'étages</label><input id="fFloors" type="number" value="4" min="1" max="30" /></div>
+      <div style="flex:1"><label>Portes / palier</label><input id="fDoors" type="number" value="2" min="1" max="12" /></div>
+    </div>
+    <button class="btn" onclick="createBuilding()">Ajouter</button>
+    <button class="btn ghost" onclick="closeOv('ovBuilding')">Annuler</button>
+  </div>
+</div>
+
+<!-- modal saisie porte -->
+<div class="overlay" id="ovDoor">
+  <div class="sheet">
+    <h3 id="doorTitle">Porte</h3>
+    <label>Statut</label>
+    <div class="statusgrid" id="statusGrid"></div>
+    <label>Note</label>
+    <input id="fNote" placeholder="Repasser le soir, code 1234B…" onchange="if(curDoor){curDoor.d.note=this.value.trim();save();}" />
+    <p style="font-size:12px;color:#6b7280;margin:2px 0 0">Touchez un statut pour enregistrer et revenir.</p>
+    <button class="btn ghost" style="color:#E24B4A;border-color:#f0b3b3;margin-top:12px" onclick="deleteDoor()">Supprimer cette porte</button>
+  </div>
+</div>
+
+<script src="lib/leaflet.js"></script>
+<script src="data/buildings.js"></script>
+<script>
+const STATUSES = [
+  {key:'todo',      label:'À faire',   color:'#9aa0a6'},
+  {key:'interesse', label:'Intéressé', color:'#1D9E75'},
+  {key:'visite',    label:'Visité',    color:'#378ADD'},
+  {key:'absent',    label:'Absent',    color:'#EF9F27'},
+  {key:'refus',     label:'Refus',     color:'#E24B4A'},
+];
+const colorOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).color;
+const labelOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).label;
+
+let DB = JSON.parse(localStorage.getItem('pap')||'null') || {buildings:[]};
+function save(){ localStorage.setItem('pap', JSON.stringify(DB)); }
+
+let pendingLatLng = null;   // position du bâtiment en cours de création
+let curBuilding = null;     // bâtiment ouvert dans le détail
+let curDoor = null;         // {building, floor, index}
+let curDoorStatus = 'todo';
+
+/* ---------- Carte ---------- */
+let map = null, markers = [];
+// Cadrage par 2 intersections : chacune posée sur un bord latéral
+const EDGE_L = [48.8283903, 2.2505021]; // bord gauche : Rue de Seine × Avenue Pierre Grenier
+const EDGE_R = [48.8281580, 2.2536653]; // bord droit  : Quai du Point du Jour × Rue Émile Duclaux
+try {
+  if(typeof L === 'undefined') throw new Error('Leaflet non chargé');
+  map = L.map('map',{
+    zoomControl:true,
+    zoomSnap:0,               // zoom fractionnaire -> cadrage exact au pixel
+    maxBoundsViscosity:1.0    // bord "dur" : la carte reste sur la zone
+  });
+  // Fond épuré sans pictos de commerces (rues + noms + bâtiments)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    maxZoom:22, maxNativeZoom:20, subdomains:'abcd',
+    attribution:'© OpenStreetMap © CARTO'
+  }).addTo(map);
+  function frameEdges(){
+    map.setMaxBounds(null); map.setMinZoom(0);   // libère avant de recalculer
+    map.invalidateSize();
+    var W = map.getSize().x, crs = map.options.crs;
+    var xl = crs.latLngToPoint(L.latLng(EDGE_L), 0).x;
+    var xr = crs.latLngToPoint(L.latLng(EDGE_R), 0).x;
+    var z = Math.log2(W / (xr - xl));            // largeur écran = écart entre les 2 intersections
+    var center = [(EDGE_L[0]+EDGE_R[0])/2, (EDGE_L[1]+EDGE_R[1])/2];
+    map.setView(center, z, {animate:false});
+    map.setMinZoom(z);                            // interdit de dézoomer plus loin
+    map.setMaxBounds(map.getBounds());            // verrouille le déplacement
+  }
+  frameEdges();
+  window.addEventListener('resize', frameEdges);
+  loadBuildings();
+  map.on('click', e=> openCageModal(e.latlng.lat, e.latlng.lng, 4));  // taper un porche manqué -> cage
+} catch(err){
+  document.getElementById('mapWrap').innerHTML =
+    '<div class="empty">La carte n\'a pas pu se charger.<br>Utilise l\'onglet Bâtiments pour ajouter/gérer tes bâtiments.<br><br><button class="btn" style="max-width:240px;margin:0 auto" onclick="pendingLatLng=null;openOv(\'ovBuilding\')">+ Ajouter un bâtiment</button></div>';
+}
+// M = Square des Moulineaux (nord), A = Square de l'Avre (sud)
+const squareOf = lat => lat>48.8283 ? 'M' : 'A';
+// une cage est "faite" quand toutes ses portes ont été traitées
+const cageDone = b => b.doors.length>0 && b.doors.every(d=>d.status!=='todo');
+const SQNAME={M:'Moulineaux', A:'Avre'};
+// plus petit numéro libre dans un square
+function nextCageNum(sq){
+  const used=new Set(DB.buildings.filter(b=>b.sq===sq&&b.num).map(b=>b.num));
+  let n=1; while(used.has(n))n++; return n;
+}
+// attribue UNE FOIS un numéro figé aux cages qui n'en ont pas encore (migration + sécurité)
+function ensureCageNumbers(){
+  let changed=false; const g={M:[],A:[]};
+  DB.buildings.forEach(b=>{ if(!b.sq){b.sq=squareOf(b.lat);changed=true;} g[b.sq].push(b); });
+  ['M','A'].forEach(sq=>{
+    const used=new Set(g[sq].filter(b=>b.num).map(b=>b.num));
+    g[sq].filter(b=>!b.num).sort((a,b)=> b.lat-a.lat || a.lng-b.lng).forEach(b=>{
+      let n=1; while(used.has(n))n++; b.num=n; used.add(n); changed=true;
+    });
+  });
+  if(changed) save();
+}
+// numéros en double dans un même square -> ensemble de clés "sq-num"
+function cageConflicts(){
+  const seen={}, dup=new Set();
+  DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen[k])dup.add(k); seen[k]=true; } });
+  return dup;
+}
+function pastilleIcon(text, sq, color){
+  return L.divIcon({className:'', iconSize:[34,34], iconAnchor:[17,17], html:
+    `<div style="width:34px;height:34px;border-radius:50%;background:${color};color:#fff;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      box-shadow:0 1px 4px rgba(0,0,0,.45);border:2px solid #fff;line-height:1">
+      <span style="font-size:14px;font-weight:700;margin-top:1px">${text}</span>
+      <span style="font-size:11px;font-weight:700;margin-top:-2px;letter-spacing:.5px">${sq}</span>
+    </div>`});
+}
+let markerLayer=null, cageLabelById={};
+// cages créées (numéro figé) + détections restantes ("+"). Renseigne cageLabelById.
+function buildEntries(){
+  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;   // filet de sécurité (timing)
+  ensureCageNumbers();
+  const dup=cageConflicts();
+  const entries=[];
+  DB.buildings.forEach(b=>{ if(b.lat!=null) entries.push({lat:b.lat,lng:b.lng,kind:'cage',b,num:b.num,sq:b.sq,conflict:dup.has(b.sq+'-'+b.num)}); });
+  if(buildingsData) buildingsData.forEach(bd=>{
+    if(polyAreaM2(bd.coords)<DET.minArea) return;
+    detectEntrances(bd.coords).forEach(pt=>{
+      if(isCage(pt)||isDismissed(pt)) return;
+      entries.push({lat:pt[0],lng:pt[1],kind:'cand',levels:bd.levels,sq:squareOf(pt[0])});
+    });
+  });
+  cageLabelById={};
+  entries.forEach(e=>{ if(e.kind==='cage') cageLabelById[e.b.id]={num:e.num,sq:e.sq,conflict:e.conflict}; });
+  return entries;
+}
+// nom lisible d'une cage : "Cage 3 — Moulineaux" (astérisque si numéro en double)
+function cageLabel(b){
+  const l=cageLabelById[b.id];
+  return l ? `Cage ${l.num}${l.conflict?' *':''} — ${SQNAME[l.sq]}` : (b.addr||'Cage');
+}
+// dessine TOUT : cages (numéro figé) + entrées détectées ("+")
+function drawMarkers(){
+  if(!map) return;
+  if(markerLayer) map.removeLayer(markerLayer);
+  markerLayer=L.layerGroup().addTo(map);
+  buildEntries().forEach(e=>{
+    const done = e.kind==='cage' && cageDone(e.b);
+    const color = done ? '#378ADD' : '#EF9F27';   // bleu = faite, orange = pas faite
+    const text = e.kind==='cage' ? (e.num + (e.conflict?'*':'')) : '+';
+    const m = L.marker([e.lat,e.lng],{icon:pastilleIcon(text,e.sq,color)}).addTo(markerLayer);
+    if(e.kind==='cage'){ m.on('click',()=>openDetail(e.b.id)); }
+    else m.bindPopup('<div style="text-align:center;font:13px sans-serif;min-width:130px">Entrée de cage&nbsp;?'+
+      '<div style="margin-top:8px"><button onclick="createCageAt('+e.lat+','+e.lng+','+(e.levels||4)+')" style="padding:7px 10px;margin:0 3px;border:0;border-radius:7px;background:#378ADD;color:#fff;font-weight:600">Créer</button>'+
+      '<button onclick="dismissCandidate('+e.lat+','+e.lng+')" style="padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7">Retirer</button></div></div>');
+  });
+}
+// corriger le numéro / square figé d'une cage
+function setCageNum(id,val){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  const n=parseInt(val,10); if(n>0) b.num=n; save(); renderDetail(); drawMarkers();
+}
+function setCageSquare(id,sq){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  b.sq=sq; save(); renderDetail(); drawMarkers();
+}
+
+/* ---------- Contours immeubles + détection des cages d'escalier ---------- */
+let outlineLayer=null, candLayer=null, buildingsData=null;
+const DET={apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
+if(!DB.dismissed) DB.dismissed=[];   // entrées auto retirées à la main
+
+function projM(coords){
+  const lat0=coords[0][0]*Math.PI/180, mLat=111320, mLon=111320*Math.cos(lat0);
+  const p=coords.map(([la,lo])=>[(lo-coords[0][1])*mLon,(la-coords[0][0])*mLat]);
+  if(p.length>1){const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01)p.pop();}
+  return {p,mLat,mLon};
+}
+function polyAreaM2(coords){
+  const {p}=projM(coords); let a=0,n=p.length;
+  for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];a+=x1*y2-x2*y1;}
+  return Math.abs(a/2);
+}
+// Détecte les entrées (redans) -> [[lat,lon],...]
+function detectEntrances(coords){
+  const {p,mLat,mLon}=projM(coords); const n=p.length; if(n<6)return [];
+  let area=0; for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];area+=x1*y2-x2*y1;}
+  const ccw=area>0;
+  const len=i=>{const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];return Math.hypot(x2-x1,y2-y1);};
+  const turn=i=>{const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n];
+    const ax=b[0]-a[0],ay=b[1]-a[1],bx=c[0]-b[0],by=c[1]-b[1];
+    let t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
+  const cand=[];
+  for(let i=0;i<n;i++){
+    const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax)continue;
+    if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv)continue;              // deux coins convexes
+    if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank)continue;      // côtés = profondeur du porche
+    const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+    let dx=b[0]-a[0],dy=b[1]-a[1]; const dl=Math.hypot(dx,dy); dx/=dl;dy/=dl;
+    const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                // normale extérieure
+    cand.push([mx+nx*1.6, my+ny*1.6]);
+  }
+  const merged=[]; cand.forEach(e=>{ if(!merged.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge))merged.push(e); });
+  return merged.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
+}
+function nearM(pt,lat,lng,m){
+  const mLat=111320, mLon=111320*Math.cos(lat*Math.PI/180);
+  return Math.hypot((pt[0]-lat)*mLat,(pt[1]-lng)*mLon)<m;
+}
+const isCage=pt=>DB.buildings.some(b=>b.lat&&nearM(pt,b.lat,b.lng,5));
+const isDismissed=pt=>DB.dismissed.some(d=>nearM(pt,d[0],d[1],5));
+
+async function loadBuildings(){
+  if(!map) return;
+  buildingsData = window.BUILDINGS_DATA || buildingsData;   // intégré (marche en double-clic, sans serveur)
+  if(!buildingsData){ try{ buildingsData=await (await fetch('data/buildings.json')).json(); }catch(e){} }
+  ensureOutlines();
+  drawMarkers();
+}
+// dessine les contours une seule fois, dès que les données sont dispo (robuste au timing de chargement)
+function ensureOutlines(){
+  if(!map || outlineLayer) return;
+  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;
+  if(!buildingsData) return;
+  outlineLayer=L.layerGroup().addTo(map);
+  buildingsData.forEach(b=>L.polygon(b.coords,{color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}).addTo(outlineLayer));
+}
+// compat : tout est dessiné par drawMarkers désormais
+function refreshEntrances(){ drawMarkers(); }
+// depuis le menu d'une pastille : ouvrir la création de cage pré-remplie
+let pendingSquare='M';
+function pickSquare(sq){
+  pendingSquare=sq;
+  document.getElementById('sqM').classList.toggle('sel', sq==='M');
+  document.getElementById('sqA').classList.toggle('sel', sq==='A');
+  document.getElementById('fNum').value = nextCageNum(sq);   // numéro suggéré = 1er libre
+}
+// ouvre la fenêtre "nouvelle cage" : square par défaut selon la position, numéro suggéré
+function openCageModal(lat,lng,levels){
+  if(map) map.closePopup();
+  pendingLatLng={lat,lng};
+  pickSquare(squareOf(lat));
+  document.getElementById('fFloors').value = levels||4;
+  document.getElementById('fDoors').value = 2;
+  openOv('ovBuilding');
+}
+function createCageAt(lat,lng,levels){ openCageModal(lat,lng,levels); }
+// retirer définitivement une pastille auto erronée
+function dismissCandidate(lat,lng){
+  map.closePopup();
+  DB.dismissed.push([lat,lng]); save();
+  refreshEntrances();
+}
+
+/* ---------- Création bâtiment ---------- */
+function createBuilding(){
+  const nf = Math.max(1, +document.getElementById('fFloors').value||1);
+  const nd = Math.max(1, +document.getElementById('fDoors').value||1);
+  const ll = pendingLatLng || (map ? map.getCenter() : {lat:48.8566,lng:2.3522});
+  const sq = pendingSquare;                                   // square choisi dans la fenêtre
+  const num = Math.max(1, +document.getElementById('fNum').value || nextCageNum(sq));  // numéro saisi
+  const doors = [];
+  for(let f=0; f<nf; f++) for(let i=0; i<nd; i++)
+    doors.push({floor:f, index:i, status:'todo', note:'', date:'', by:''});
+  DB.buildings.push({id:'b'+Date.now(), addr:"Cage d'escalier", sector:'', floors:nf, perFloor:nd, lat:ll.lat, lng:ll.lng, sq, num, doors});
+  save(); closeOv('ovBuilding'); render();
+}
+
+/* ---------- Détail bâtiment ---------- */
+function openDetail(id){
+  curBuilding = DB.buildings.find(b=>b.id===id);
+  setTab('detail');
+  renderDetail();
+}
+// recherche "3M" / "5 A" -> ouvre la cage n°3 du square M
+function goToCage(){
+  const el=document.getElementById('search');
+  const v=(el.value||'').toUpperCase();
+  const num=parseInt((v.match(/\d+/)||[])[0],10);
+  const sq=(v.match(/[MA]/)||[])[0];
+  const b=(num&&sq)?DB.buildings.find(x=>x.num===num&&x.sq===sq):null;
+  if(b){ el.value=''; el.blur(); openDetail(b.id); }
+  else { el.style.borderColor='#E24B4A'; }   // introuvable
+}
+function floorName(f){ return f===0?'RDC':(f+'e'==='1e'?'1er':f+'e'); }
+function renderDetail(){
+  const b = curBuilding; if(!b) return;
+  if(!cageLabelById[b.id]) buildEntries();
+  const done = b.doors.filter(d=>d.status!=='todo').length;
+  let html = `<button class="back" onclick="setTab('list');render()">← Retour</button>`;
+  html += `<div class="bcard" style="cursor:default"><div class="row">
+      <div class="bicon">🏢</div>
+      <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} étages · ${b.doors.length} portes${b.sector?' · '+esc(b.sector):''}</p></div>
+      <div class="count"><b>${done}/${b.doors.length}</b><div class="sub">visitées</div></div>
+    </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
+  // correction du numéro figé + square
+  const lbl = cageLabelById[b.id] || {num:b.num, sq:b.sq, conflict:false};
+  html += `<div class="bcard" style="cursor:default;margin-top:-2px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#6b7280">
+        <span>N° de cage</span>
+        <input type="number" min="1" value="${lbl.num}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
+        <span>Square</span>
+        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='M'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','M')">M</button>
+        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='A'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','A')">A</button>
+      </div>
+      ${lbl.conflict?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
+    </div>`;
+  // étages de haut en bas — bouton + à gauche pour ajouter une porte à cet étage
+  for(let f=b.floors-1; f>=0; f--){
+    html += `<div class="floor">
+      <button class="addoor" title="Ajouter une porte à cet étage" onclick="addDoorToFloor('${b.id}',${f})">+</button>
+      <div class="lab">${floorName(f)}</div><div class="doors">`;
+    b.doors.filter(d=>d.floor===f).forEach(d=>{
+      const isTodo = d.status==='todo';
+      html += `<button class="door ${isTodo?'todo':''}" style="${isTodo?'':'background:'+colorOf(d.status)}"
+                 onclick="openDoor('${b.id}',${d.floor},${d.index})" title="${esc(d.note)}">
+                 🚪${d.note?'<span class="note-dot"></span>':''}</button>`;
+    });
+    html += `</div><button class="delfloor" title="Supprimer cet étage" onclick="deleteFloor('${b.id}',${f})">×</button></div>`;
+  }
+  html += `<div class="legend">`;
+  STATUSES.forEach(s=> html+=`<span><span class="sw" style="background:${s.key==='todo'?'#f4f5f7;border:1px solid #cbd0d6':s.color}"></span>${s.label}</span>`);
+  html += `</div>`;
+  // encart notes
+  html += `<label style="display:block;font-size:13px;color:#6b7280;margin:16px 0 4px">Notes</label>
+    <textarea id="cageNote" rows="3" placeholder="Digicode, remarques, à repasser…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;resize:vertical" onchange="setCageNote('${b.id}',this.value)">${esc(b.note||'')}</textarea>`;
+  // actions
+  html += `<button class="btn ghost" style="margin-top:12px" onclick="addFloor('${b.id}')">+ Ajouter un étage</button>`;
+  html += `<button class="btn ghost" style="margin-top:8px;color:#E24B4A;border-color:#f0b3b3" onclick="deleteBuilding('${b.id}')">Supprimer ce bâtiment</button>`;
+  document.getElementById('detail').innerHTML = html;
+}
+function addFloor(id){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  const f=b.floors, per=Math.max(1,b.perFloor||2);
+  for(let i=0;i<per;i++) b.doors.push({floor:f,index:i,status:'todo',note:'',date:'',by:''});
+  b.floors++; save(); renderDetail(); drawMarkers();
+}
+function addDoorToFloor(id,floor){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  const idxs=b.doors.filter(d=>d.floor===floor).map(d=>d.index);
+  const next=idxs.length?Math.max(...idxs)+1:0;
+  b.doors.push({floor,index:next,status:'todo',note:'',date:'',by:''});
+  save(); renderDetail(); drawMarkers();
+}
+function deleteFloor(id,floor){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  if(b.floors<=1){ alert('Une cage doit garder au moins un étage.'); return; }
+  if(!confirm('Êtes-vous sûr de vouloir supprimer cet étage ?'))return;
+  b.doors = b.doors.filter(d=>d.floor!==floor);
+  b.doors.forEach(d=>{ if(d.floor>floor) d.floor--; });   // décale les étages au-dessus
+  b.floors--; save(); renderDetail(); drawMarkers(); updateHeader();
+}
+function setCageNote(id,val){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  b.note=val; save();
+}
+function deleteBuilding(id){
+  if(!confirm('Êtes-vous sûr de vouloir supprimer le bâtiment ?'))return;
+  DB.buildings = DB.buildings.filter(b=>b.id!==id);
+  save(); setTab('list'); render();
+}
+
+/* ---------- Saisie porte ---------- */
+function openDoor(bid,floor,index){
+  const b = DB.buildings.find(x=>x.id===bid);
+  const d = b.doors.find(x=>x.floor===floor && x.index===index);
+  curDoor = {b,d};
+  curDoorStatus = d.status;
+  document.getElementById('doorTitle').textContent = `${floorName(floor)} · porte ${index+1}`;
+  document.getElementById('fNote').value = d.note||'';
+  const grid = document.getElementById('statusGrid'); grid.innerHTML='';
+  STATUSES.forEach(s=>{
+    const btn = document.createElement('button');
+    btn.textContent = s.label;
+    btn.style.background = s.key==='todo' ? '#9aa0a6' : s.color;
+    if(s.key===curDoorStatus) btn.classList.add('sel');
+    btn.onclick = ()=> pickDoorStatus(s.key);   // taper un statut = enregistre + revient à la cage
+    grid.appendChild(btn);
+  });
+  openOv('ovDoor');
+}
+// enregistre le statut (+ note en cours) et revient sur la cage
+function pickDoorStatus(status){
+  if(!curDoor) return;
+  const d = curDoor.d;
+  d.status = status;
+  d.note = document.getElementById('fNote').value.trim();
+  d.date = status==='todo' ? '' : new Date().toISOString().slice(0,10);
+  save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
+}
+function deleteDoor(){
+  if(!curDoor) return;
+  if(!confirm('Êtes-vous sûr de vouloir supprimer cette porte ?'))return;
+  const b=curDoor.b, d=curDoor.d;
+  b.doors = b.doors.filter(x=>!(x.floor===d.floor && x.index===d.index));
+  // ré-indexe les portes restantes de cet étage (0,1,2…)
+  b.doors.filter(x=>x.floor===d.floor).sort((a,c)=>a.index-c.index).forEach((x,i)=>x.index=i);
+  save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
+}
+
+/* ---------- Liste ---------- */
+function render(){
+  buildEntries();   // met à jour la numérotation avant d'afficher la liste
+  const list = document.getElementById('blist');
+  if(!DB.buildings.length){ list.innerHTML = `<div class="empty">Aucun bâtiment.<br>Va sur l'onglet Carte et touche un point pour en ajouter un.</div>`; }
+  else {
+    list.innerHTML = DB.buildings.map(b=>{
+      const done = b.doors.filter(d=>d.status!=='todo').length;
+      return `<div class="bcard" onclick="openDetail('${b.id}')"><div class="row">
+        <div class="bicon">🏢</div>
+        <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} ét. · ${b.doors.length} portes${b.sector?' · '+esc(b.sector):''}</p></div>
+        <div class="count"><b>${done}/${b.doors.length}</b></div>
+      </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
+    }).join('');
+  }
+  ensureOutlines(); drawMarkers(); renderStats(); updateHeader();
+}
+function updateHeader(){
+  const all = DB.buildings.flatMap(b=>b.doors);
+  const done = all.filter(d=>d.status!=='todo').length;
+  document.getElementById('hstat').textContent = DB.buildings.length ? `${done}/${all.length} portes` : '';
+}
+function renderStats(){
+  const all = DB.buildings.flatMap(b=>b.doors);
+  const by = k => all.filter(d=>d.status===k).length;
+  const m = document.getElementById('metrics');
+  const cards = [
+    {n:DB.buildings.length, l:'Bâtiments'},
+    {n:all.length, l:'Portes totales'},
+    {n:by('interesse'), l:'Intéressés', c:'#1D9E75'},
+    {n:by('refus'), l:'Refus', c:'#E24B4A'},
+    {n:by('absent'), l:'Absents', c:'#EF9F27'},
+    {n:by('todo'), l:'À faire', c:'#9aa0a6'},
+  ];
+  m.innerHTML = cards.map(c=>`<div class="metric"><div class="n" style="${c.c?'color:'+c.c:''}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
+}
+
+/* ---------- Export CSV ---------- */
+function download(name, text, type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type}));
+  a.download=name; a.click();
+}
+function exportCSV(){
+  const rows = [['Batiment','Secteur','Etage','Porte','Statut','Note','Date','Lat','Lng']];
+  DB.buildings.forEach(b=> b.doors.forEach(d=>
+    rows.push([b.addr, b.sector||'', floorName(d.floor), d.index+1, labelOf(d.status), d.note||'', d.date||'',
+               b.lat!=null?b.lat.toFixed(7):'', b.lng!=null?b.lng.toFixed(7):''])
+  ));
+  const csv = '﻿'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  download('porte-a-porte-'+new Date().toISOString().slice(0,10)+'.csv', csv, 'text/csv');
+}
+// Sauvegarde complète (cages + portes + pastilles retirées) dans un fichier .json
+function backupJSON(){
+  download('porte-a-porte-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json',
+           JSON.stringify(DB,null,2), 'application/json');
+}
+// remet toutes les portes à "À faire" — garde cages, étages, portes et notes
+function resetStates(){
+  if(!confirm('Remettre toutes les portes à « À faire » ?\nLes cages, étages, portes et notes sont conservés.'))return;
+  DB.buildings.forEach(b=>b.doors.forEach(d=>{ d.status='todo'; d.date=''; d.by=''; }));
+  save(); render();
+}
+// Recharge une sauvegarde .json
+function restoreJSON(input){
+  const file=input.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const d=JSON.parse(r.result);
+    if(!d||!Array.isArray(d.buildings)) throw 0;
+    if(!d.dismissed) d.dismissed=[];
+    DB=d; save(); setTab('map'); render();
+    alert('Sauvegarde chargée : '+DB.buildings.length+' cage(s).');
+  }catch(e){ alert('Fichier invalide.'); } };
+  r.readAsText(file);
+  input.value='';
+}
+
+/* ---------- UI helpers ---------- */
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function openOv(id){document.getElementById(id).classList.add('show')}
+function closeOv(id){document.getElementById(id).classList.remove('show')}
+function setTab(tab){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='map' && map) setTimeout(()=>map.invalidateSize(),50);
+}
+document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>{ setTab(b.dataset.tab); render(); });
+document.querySelectorAll('.overlay').forEach(o=> o.onclick=e=>{ if(e.target===o) o.classList.remove('show'); });
+
+render();
+</script>
+</body>
+</html>

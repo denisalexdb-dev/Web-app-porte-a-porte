@@ -1,0 +1,1355 @@
+{
+  "buildings": [
+    {
+      "id": "b1783023618075",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82885357567995,
+      "lng": 2.251143767785156,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "interesse",
+          "note": "Test",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023630611",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82895601457799,
+      "lng": 2.2512107660844243,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023634345",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82910682701897,
+      "lng": 2.2513116237392117,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023637404",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82920547138892,
+      "lng": 2.2513836649211916,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023640330",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82934015858042,
+      "lng": 2.2514802001050382,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023643013",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.8294406994874,
+      "lng": 2.2515522412870186,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023651802",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82968548915475,
+      "lng": 2.2517191800605034,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023653868",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82976999815693,
+      "lng": 2.2517840576490444,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023656074",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82986359398228,
+      "lng": 2.2518199473788725,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023657923",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82977363294955,
+      "lng": 2.251853076360271,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023682390",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82966623581621,
+      "lng": 2.2519710423467703,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023684226",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82954213999439,
+      "lng": 2.2520673460382716,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023686183",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82943962582284,
+      "lng": 2.25217594381808,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023696186",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82755817796603,
+      "lng": 2.2524714840127174,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023697793",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82763632939837,
+      "lng": 2.2525750120795163,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023699744",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82773719909013,
+      "lng": 2.252718570998829,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023711771",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82802163516031,
+      "lng": 2.2517610168176416,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    },
+    {
+      "id": "b1783023714021",
+      "addr": "Cage d'escalier",
+      "sector": "",
+      "floors": 4,
+      "perFloor": 2,
+      "lat": 48.82791789114949,
+      "lng": 2.2518587217081802,
+      "doors": [
+        {
+          "floor": 0,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 0,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 1,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 2,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 0,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        },
+        {
+          "floor": 3,
+          "index": 1,
+          "status": "todo",
+          "note": "",
+          "date": "",
+          "by": ""
+        }
+      ]
+    }
+  ],
+  "dismissed": []
+}
