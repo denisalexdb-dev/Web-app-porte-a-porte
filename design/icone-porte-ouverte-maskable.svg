@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icône « Porte ouverte » : fond plein (compatible icône masquable Android / iOS) -->
+  <rect width="512" height="512" fill="#4C0297"/>
+  <g transform="translate(256 262) scale(.76) translate(-256 -262)">
+    <!-- ouverture éclairée -->
+    <rect x="170" y="112" width="172" height="290" fill="#F9C900"/>
+    <!-- battant entrouvert -->
+    <polygon points="170,112 250,132 250,428 170,402" fill="#D1271C"/>
+    <circle cx="219" cy="282" r="13" fill="#fff"/>
+    <!-- chambranle -->
+    <path d="M158 402 V100 H354 V402" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="miter"/>
+    <!-- seuil -->
+    <line x1="112" y1="402" x2="400" y2="402" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
+  </g>
+</svg>

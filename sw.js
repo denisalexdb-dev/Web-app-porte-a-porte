@@ -1,9 +1,9 @@
-const CACHE = 'pap-v3';
+const CACHE = 'pap-v4';
 const ASSETS = [
   '/', '/porte-a-porte.html',
   '/lib/leaflet.js', '/lib/leaflet.css',
   '/data/buildings.js',
-  '/manifest.json', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/favicon-32.png'
+  '/manifest.json', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/favicon-32.png', '/icon-maskable-192.png', '/icon-maskable-512.png'
 ];
 
 self.addEventListener('install', e => {
