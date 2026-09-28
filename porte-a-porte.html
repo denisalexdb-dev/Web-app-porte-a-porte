@@ -348,7 +348,7 @@ function initFirebase(){
         if(remote && remote.buildings.length>0) applyRemote(remote);
         else pushToFirestore();
       } else if(remote){
-        applyRemote(remote);                 // mise à jour venant d'un autre équipier
+        applyRemote(remote);                 // mise à jour venant d'un autre camarade
       }
     }, err=>{ console.warn('Firestore onSnapshot:', err); setSync('erreur'); });
   }catch(e){ console.warn('Firebase init:', e); setSync('erreur'); }
@@ -899,7 +899,7 @@ function render(){
     }).join('');
   }
   drawMarkers(); renderStats(); updateHeader();
-  gabRender();   // mode Gabrielle : suit aussi les mises à jour des équipiers
+  gabRender();   // mode Gabrielle : suit aussi les mises à jour des camarades
 }
 function updateHeader(){
   const all = DB.buildings.flatMap(b=>b.doors);
@@ -986,9 +986,9 @@ function restoreJSON(input){
 // 1re ouverture : bienvenue + visite de la carte. Ensuite le bouton « ? » explique UNIQUEMENT la page affichée.
 // Chaque étape : un élément mis en lumière (sel) + une fenêtre placée au-dessus ou en dessous pour ne pas le cacher.
 const TUTO_BIENVENUE = [
-  {t:"Bienvenue !", x:"Cette appli sert à suivre le porte-à-porte : les cages d'escalier, les portes et ce qui s'est passé à chacune. Tout ce que tu notes est partagé en direct avec l'équipe."},
+  {t:"Bienvenue !", x:"Cette appli sert à suivre le porte-à-porte : les cages d'escalier, les portes et ce qui s'est passé à chacune. Tout ce que tu notes est partagé en direct avec les camarades."},
   {sel:'.tabs', t:"Les trois pages", x:"En bas : la Carte pour se repérer et créer les cages, Cages pour la liste, et Bilan pour les chiffres, les exports et les réglages."},
-  {sel:'#fbstatus', t:"La synchro", x:"« Synchronisé » : tes saisies partent bien à l'équipe. « Hors ligne » : elles sont gardées sur le téléphone et partiront au retour du réseau."},
+  {sel:'#fbstatus', t:"La synchro", x:"« Synchronisé » : tes saisies partent bien aux camarades. « Hors ligne » : elles sont gardées sur le téléphone et partiront au retour du réseau."},
   {sel:'#helpBtn', t:"Besoin d'aide ?", x:"Ce bouton « ? » explique la page où tu te trouves, à tout moment. Je te montre la carte pour commencer."}
 ];
 const TUTO_PAGES = {
@@ -1007,7 +1007,7 @@ const TUTO_PAGES = {
     {sel:'#blist .bcard', t:"Une cage", x:"Le badge donne le numéro et le square (il devient violet quand la cage est finie). La barre verte montre les portes faites. Touche la carte pour ouvrir la cage."}
   ],
   'view-stats':[
-    {sel:'#metrics', t:"Les chiffres", x:"Cages, portes, intéressés, refus, absents et portes restantes, pour toute l'équipe."},
+    {sel:'#metrics', t:"Les chiffres", x:"Cages, portes, intéressés, refus, absents et portes restantes, pour l'ensemble des camarades."},
     {sel:'#sExport', t:"Exporter", x:"Crée un fichier à ouvrir dans Excel, une ligne par porte."},
     {sel:'#sSave', t:"Sauvegarder", x:"Enregistre toutes les données dans un fichier sur le téléphone, par précaution."},
     {sel:'#sLoad', t:"Charger une sauvegarde", x:"Remet les données d'un fichier de sauvegarde. Attention : ça remplace ce qui est affiché."},
@@ -1021,7 +1021,7 @@ const TUTO_PAGES = {
     {sel:'#detail .door', t:"Les portes", x:"Touche une porte pour noter ce qui s'est passé et ajouter une note. Le petit point signale une porte qui a une note."},
     {sel:'#detail .lab.tap', t:"Étage sans logement", x:"Touche le nom d'un étage (RDC, 1er…) s'il n'a pas de logement, par exemple un rez-de-chaussée avec des commerces. Touche-le à nouveau pour annuler."},
     {sel:'#detail .addoor', t:"Ajouter une porte", x:"Le « + » à gauche d'un étage ajoute une porte à cet étage. Le « × » à droite supprime l'étage."},
-    {sel:'#cageNote', t:"Notes de la cage", x:"Digicode, remarques, horaires pour repasser : c'est partagé avec toute l'équipe."}
+    {sel:'#cageNote', t:"Notes de la cage", x:"Digicode, remarques, horaires pour repasser : c'est partagé avec tous les camarades."}
   ]
 };
 let tutoEtapes=[], tutoI=0, tutoApres=null;
@@ -1089,7 +1089,7 @@ let gabRappelT=null, gabRappelFait=false, gabCompte=0, gabVeille=null;
 function gabArmerRappel(relancer=true){
   const actif = document.getElementById('gab').classList.contains('show') && G.ecran==='porte' && !gabRappelFait;
   if(!actif){ clearTimeout(gabRappelT); gabRappelT=null; return; }
-  if(gabRappelT && !relancer) return;   // un simple rafraîchissement (mise à jour d'un équipier) ne relance pas le compte
+  if(gabRappelT && !relancer) return;   // un simple rafraîchissement (mise à jour d'un camarade) ne relance pas le compte
   clearTimeout(gabRappelT); gabRappelT=setTimeout(()=>{ gabRappelT=null; gabRappel(); }, GAB_RAPPEL_MS);
 }
 function gabRappel(){
@@ -1214,7 +1214,7 @@ const gabEtageNom = f => f===0 ? 'Rez-de-chaussée' : floorName(f)+' étage';
 function gabRender(){
   const root=document.getElementById('gab'); if(!root || !root.classList.contains('show')) return;
   const inp=document.getElementById('gNum'), focus=inp && document.activeElement===inp;
-  if(inp) G.num=inp.value;   // une mise à jour d'un équipier ne doit pas effacer ce qu'elle tape
+  if(inp) G.num=inp.value;   // une mise à jour d'un camarade ne doit pas effacer ce qu'elle tape
   const b=G.cage && DB.buildings.find(x=>x.id===G.cage);
   if(['porte','etage','fini'].includes(G.ecran) && !b) G.ecran='lieu';
   if(G.ecran==='etage'){
