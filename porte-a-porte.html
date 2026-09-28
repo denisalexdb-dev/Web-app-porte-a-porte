@@ -85,6 +85,8 @@
   .door{min-width:0;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#fff;line-height:1.1;cursor:pointer;border:0;position:relative;padding:0 2px}
   .door b{font-family:var(--display);font-weight:800;font-size:16px}
   .door .st{font-size:10.5px;font-weight:700;line-height:1.35;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lab.tap{background:none;border:0;padding:6px 0;cursor:pointer;font:inherit;font-size:13px;font-weight:700;color:var(--violet);text-decoration:underline dotted;text-underline-offset:3px}
+  .nodoor{flex:1;min-width:0;height:44px;border-radius:12px;background:repeating-linear-gradient(-45deg,#F4EFF9 0 8px,#fff 8px 16px);border:1.5px solid var(--line);color:var(--muted);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
   .floor+.floor{border-top:1px solid var(--line);padding-top:8px}
   .door.todo{background:#fff;border:1.5px dashed #C9BEDA;color:#5E5670}
   .door .note-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
@@ -695,7 +697,12 @@ function renderDetail(){
   for(let f=b.floors-1; f>=0; f--){
     html += `<div class="floor">
       <button class="addoor" title="Ajouter une porte à cet étage" onclick="addDoorToFloor('${b.id}',${f})">+</button>
-      <div class="lab">${floorName(f)}</div><div class="doors" style="grid-template-columns:repeat(${doorCols(b.doors.filter(d=>d.floor===f).length)},minmax(0,1fr))">`;
+      <button class="lab tap" title="Toucher pour indiquer s'il y a des logements à cet étage" onclick="toggleNoDoor('${b.id}',${f})">${floorName(f)}</button>`;
+    if(isNoDoor(b,f)){
+      html += `<div class="nodoor">Pas de logement</div><button class="delfloor" title="Supprimer cet étage" onclick="deleteFloor('${b.id}',${f})">×</button></div>`;
+      continue;
+    }
+    html += `<div class="doors" style="grid-template-columns:repeat(${doorCols(b.doors.filter(d=>d.floor===f).length)},minmax(0,1fr))">`;
     b.doors.filter(d=>d.floor===f).forEach(d=>{
       const isTodo = d.status==='todo';
       html += `<button class="door ${isTodo?'todo':''}" style="${isTodo?'':'background:'+colorOf(d.status)}"
@@ -704,6 +711,7 @@ function renderDetail(){
     });
     html += `</div><button class="delfloor" title="Supprimer cet étage" onclick="deleteFloor('${b.id}',${f})">×</button></div>`;
   }
+  html += `<p style="font-size:12px;color:var(--muted);margin:10px 0 0">Touchez le nom d'un étage (RDC, 1er…) pour indiquer qu'il n'a pas de logement.</p>`;
   html += `<div class="legend">`;
   STATUSES.forEach(s=> html+=`<span><span class="sw" style="background:${s.key==='todo'?'#fff;border:1.5px dashed #C9BEDA':s.color}"></span>${s.label}</span>`);
   html += `</div>`;
@@ -721,8 +729,28 @@ function addFloor(id){
   for(let i=0;i<per;i++) b.doors.push({floor:f,index:i,status:'todo',note:'',date:'',by:''});
   b.floors++; save(); renderDetail(); drawMarkers();
 }
+// étages sans logement (ex. RDC avec commerces, hall, local vélo) : liste b.noDoors des numéros d'étage
+const isNoDoor = (b,f) => Array.isArray(b.noDoors) && b.noDoors.includes(f);
+function toggleNoDoor(id,floor){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  if(isNoDoor(b,floor)){
+    // l'étage retrouve ses portes (autant que par palier)
+    b.noDoors=b.noDoors.filter(f=>f!==floor);
+    const per=Math.max(1,b.perFloor||2);
+    for(let i=0;i<per;i++) b.doors.push({floor,index:i,status:'todo',note:'',date:'',by:''});
+  } else {
+    const here=b.doors.filter(d=>d.floor===floor);
+    const used=here.filter(d=>d.status!=='todo'||d.note).length;
+    const msg=`Pas de logement au ${floorName(floor)} ?`+(here.length?`\nLes ${here.length} porte(s) de cet étage seront retirées`+(used?` (dont ${used} déjà renseignée(s)).`:'.'):'');
+    if(!confirm(msg)) return;
+    b.doors=b.doors.filter(d=>d.floor!==floor);
+    b.noDoors=[...(b.noDoors||[]),floor].sort((x,y)=>x-y);
+  }
+  save(); renderDetail(); drawMarkers(); updateHeader();
+}
 function addDoorToFloor(id,floor){
   const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  if(isNoDoor(b,floor)) b.noDoors=b.noDoors.filter(f=>f!==floor);
   const idxs=b.doors.filter(d=>d.floor===floor).map(d=>d.index);
   const next=idxs.length?Math.max(...idxs)+1:0;
   b.doors.push({floor,index:next,status:'todo',note:'',date:'',by:''});
@@ -734,6 +762,7 @@ function deleteFloor(id,floor){
   if(!confirm('Êtes-vous sûr de vouloir supprimer cet étage ?'))return;
   b.doors = b.doors.filter(d=>d.floor!==floor);
   b.doors.forEach(d=>{ if(d.floor>floor) d.floor--; });   // décale les étages au-dessus
+  if(Array.isArray(b.noDoors)) b.noDoors=b.noDoors.filter(f=>f!==floor).map(f=>f>floor?f-1:f);
   b.floors--; save(); renderDetail(); drawMarkers(); updateHeader();
 }
 function setCageNote(id,val){
