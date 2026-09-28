@@ -132,40 +132,39 @@
   .cpop div{margin-top:10px;display:flex;gap:6px;justify-content:center}
   .cpop button{min-height:40px;padding:0 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font:inherit;color:var(--ink)}
   .cpop button.ok{border:0;background:var(--violet);color:#fff;font-weight:700}
-  /* ===== Mode Gabrielle : écran ultra simplifié ===== */
-  #gab{position:fixed;inset:0;z-index:900;background:var(--bg);display:none;flex-direction:column;overflow:auto;font-size:18px}
+  /* ===== Mode Gabrielle : écran pour Gabi ===== */
+  #gab{position:fixed;inset:0;z-index:900;background:var(--bg);display:none;flex-direction:column;overflow:auto;font-size:19px;color:var(--ink)}
   #gab.show{display:flex}
-  .g-head{background:var(--violet);color:#fff;padding:18px 20px 20px;padding-top:max(18px,env(safe-area-inset-top))}
+  .g-head{background:var(--violet);color:#fff;padding:16px 20px 18px;padding-top:max(16px,env(safe-area-inset-top))}
   .g-head h2{font-family:var(--display);font-weight:900;font-size:30px;margin:0;line-height:1.1}
-  .g-head p{margin:8px 0 0;font-size:18px;line-height:1.35}
-  .g-sync{font-size:14px;font-weight:600;opacity:.9;margin-top:10px}
-  .g-body{padding:18px 16px 24px;display:flex;flex-direction:column;gap:14px;flex:1}
-  .g-cites{display:flex;gap:10px}
-  .g-cites button{flex:1;min-height:56px;border-radius:16px;border:2px solid var(--line);background:#fff;font-size:17px;font-weight:700;color:var(--ink)}
-  .g-cites button.sel{background:var(--violet);border-color:var(--violet);color:#fff}
-  .g-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .g-cage{min-height:110px;border-radius:20px;border:2px solid var(--line);background:#fff;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;cursor:pointer}
-  .g-cage b{font-family:var(--display);font-weight:900;font-size:36px;line-height:1;color:var(--violet)}
-  .g-cage span{font-size:16px;font-weight:600}
-  .g-cage.fini{background:var(--violet-soft);border-color:var(--violet-soft)}
-  .g-cage.fini span{color:var(--vert);font-weight:800}
-  .g-big{min-height:64px;border-radius:18px;border:2px solid var(--line);background:#fff;color:var(--ink);font-size:19px;font-weight:700;width:100%;cursor:pointer}
-  .g-big.prim{background:var(--violet);border-color:var(--violet);color:#fff}
-  .g-door{background:#fff;border:2px solid var(--line);border-radius:22px;padding:18px;text-align:center}
-  .g-door .g-et{font-size:20px;font-weight:700;color:var(--muted)}
-  .g-door .g-po{font-family:var(--display);font-weight:900;font-size:52px;line-height:1.05;color:var(--violet)}
-  .g-door .g-av{font-size:17px;font-weight:600;margin-top:6px}
-  .g-q{font-size:22px;font-weight:800;margin:4px 0 -2px}
-  .g-st{min-height:84px;border-radius:20px;border:0;color:#fff;display:flex;align-items:center;gap:14px;padding:12px 16px;text-align:left;cursor:pointer;width:100%}
-  .g-st svg{width:36px;height:36px;flex-shrink:0}
-  .g-st b{display:block;font-size:24px;font-weight:800}
-  .g-st small{display:block;font-size:16px;font-weight:500;opacity:.95;margin-top:2px}
-  .g-row{display:flex;gap:10px}
-  .g-row .g-big{flex:1;font-size:17px}
-  .g-quit{margin-top:auto;background:none;border:0;color:var(--muted);font-size:16px;text-decoration:underline;padding:14px;min-height:48px}
-  .g-toast{position:fixed;left:16px;right:16px;top:max(16px,env(safe-area-inset-top));pointer-events:none;z-index:950;background:var(--ink);color:#fff;font-size:19px;font-weight:700;border-radius:16px;padding:16px 18px;text-align:center;display:none}
+  .g-head p{margin:6px 0 0;font-size:18px;opacity:.95}
+  .g-body{padding:16px 16px 20px;display:flex;flex-direction:column;gap:14px;flex:1}
+  /* bulle d'Alex : dans la page (jamais par-dessus les boutons) */
+  .g-bulle{display:flex;gap:12px;align-items:flex-start;background:#fff;border:2px solid var(--violet-soft);border-radius:20px;padding:14px}
+  .g-ava{width:44px;height:44px;border-radius:50%;background:var(--jaune);color:var(--ink);font-family:var(--display);font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .g-bulle p{margin:0;font-size:19px;line-height:1.4}
+  .g-bulle .g-qui{font-size:14px;font-weight:700;color:var(--violet);margin-bottom:2px}
+  .g-bulle .g-ok{margin-top:10px;background:none;border:0;padding:6px 0;color:var(--violet);font-size:18px;font-weight:800;text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+  .g-q{font-family:var(--display);font-weight:900;font-size:28px;margin:4px 0 0}
+  .g-choix{min-height:88px;border-radius:20px;border:2px solid var(--line);background:#fff;color:var(--ink);font-size:21px;font-weight:700;width:100%;cursor:pointer;padding:12px 16px;line-height:1.3}
+  .g-choix.prim{background:var(--violet);border-color:var(--violet);color:#fff}
+  .g-num{font-family:var(--display);font-weight:900;font-size:44px;text-align:center;height:84px;border:3px solid var(--violet);border-radius:20px;width:100%;color:var(--violet);background:#fff}
+  .g-lettres{display:flex;gap:12px}
+  .g-lettre{flex:1;min-height:76px;border-radius:18px;border:2px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;gap:12px;font-size:28px;font-weight:800;cursor:pointer;color:var(--ink)}
+  .g-lettre .g-case{width:34px;height:34px;border-radius:8px;border:3px solid var(--violet);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px}
+  .g-lettre.on{border-color:var(--violet);background:var(--violet-soft)}
+  .g-lettre.on .g-case{background:var(--violet)}
+  .g-door{background:#fff;border:2px solid var(--line);border-radius:22px;padding:16px;text-align:center}
+  .g-door .g-et{font-size:21px;font-weight:700;color:var(--muted)}
+  .g-door .g-po{font-family:var(--display);font-weight:900;font-size:56px;line-height:1.05;color:var(--violet)}
+  .g-door .g-deja{font-size:17px;color:var(--muted);margin-top:6px}
+  .g-st{min-height:92px;border-radius:22px;border:0;color:#fff;display:flex;align-items:center;justify-content:center;gap:14px;font-size:28px;font-weight:800;width:100%;cursor:pointer}
+  .g-st svg{width:38px;height:38px}
+  .g-liens{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:6px}
+  .g-lien{background:none;border:0;color:var(--violet);font-size:21px;font-weight:700;text-decoration:underline;text-underline-offset:5px;padding:10px 8px;cursor:pointer}
+  .g-lien.petit{font-size:16px;color:var(--muted);font-weight:600}
+  .g-toast{position:fixed;left:16px;right:16px;top:max(16px,env(safe-area-inset-top));pointer-events:none;z-index:950;background:var(--vert);color:#fff;font-size:20px;font-weight:700;border-radius:16px;padding:14px 18px;text-align:center;display:none}
   .g-toast.show{display:block;animation:up .2s ease}
-  .g-fin{font-family:var(--display);font-weight:900;font-size:34px;color:var(--vert);text-align:center;margin:20px 0 4px}
 </style>
 </head>
 <body>
@@ -960,110 +959,158 @@ function restoreJSON(input){
   input.value='';
 }
 
-/* ---------- Mode Gabrielle : écran ultra simplifié ---------- */
-// Un seul chemin : choisir sa cage -> l'appli propose la porte suivante -> un gros bouton par réponse.
-// Reste actif sur ce téléphone (localStorage) jusqu'à ce qu'on le quitte. Les données sont les mêmes (synchro Firestore).
-const GAB_ST = [
-  {key:'interesse', t:'Intéressé',  d:"La personne est intéressée"},
-  {key:'visite',    t:'Visité',     d:"On a parlé, sans plus"},
-  {key:'absent',    t:'Absent',     d:"Personne n'a ouvert"},
-  {key:'refus',     t:'Refus',      d:"La personne ne veut pas"},
-];
-let gabCage=null, gabSkip=new Set(), gabLast=null, gabFocus=null, gabToastT=null;
+/* ---------- Mode Gabrielle : l'écran de Gabi ---------- */
+// Parcours : "Tu es…" (lieu) -> numéro de cage (+ A/M) -> la porte devant elle : Intéressé / Absent / Refus.
+// Alex la guide avec des bulles DANS la page (jamais par-dessus les boutons).
+// Ton : on la tutoie, on ne dit jamais "facile" ou "simple", on ne met jamais l'erreur sur elle,
+// on rappelle que rien ne casse et qu'on peut toujours corriger.
+const G = { ecran:'lieu', lieu:null, lettre:null, num:'', cage:null, floor:0, index:0, prev:null, bulle:[], msg:'' };
+let gabToastT=null;
 const gabOn = () => { try{ return localStorage.getItem('modeG')==='1'; }catch(e){ return false; } };
+const gabVu = k => { try{ return localStorage.getItem('gabVu_'+k)==='1'; }catch(e){ return false; } };
+const gabMarque = k => { try{ localStorage.setItem('gabVu_'+k,'1'); }catch(e){} };
+const GAB_TXT = {
+  lieu:[
+    "Salut Gabi, c'est Alex ! J'ai fait cette version pour toi, pour que tu puisses toi aussi remplir la base de données.",
+    "Ça se passe en trois temps : tu me dis où tu es, tu tapes le numéro de la cage, puis, à chaque porte, tu touches ce qui s'est passé.",
+    "Tu ne peux rien casser : tout s'enregistre tout seul, et si tu te trompes, on corrige. Pour commencer, touche l'endroit où tu es, juste en dessous."
+  ],
+  numeroMA:[
+    "Le numéro de la cage est écrit à l'entrée du hall, avec une lettre A ou M à côté.",
+    "Tape le numéro dans la case, coche la lettre, puis touche « C'est parti »."
+  ],
+  numeroP:[ "Le numéro de la cage est écrit à l'entrée du hall. Tape-le dans la case, puis touche « C'est parti »." ],
+  porte:[
+    "Tu es devant une porte. Après avoir sonné, touche ce qui s'est passé : Intéressé, Absent ou Refus. Je passe tout seul à la porte suivante.",
+    "Quand tu changes d'étage, touche « On change d'étage » tout en bas. Et quand tu as terminé, « On a fini ». Si tu as touché le mauvais bouton, « Revenir à la porte d'avant » te permet de corriger."
+  ]
+};
 function gabStart(){
   try{ localStorage.setItem('modeG','1'); }catch(e){}
-  gabCage=null; gabSkip=new Set(); gabLast=null; gabFocus=null;
-  document.getElementById('gab').classList.add('show'); gabRender();
+  Object.assign(G,{ecran:'lieu',lieu:null,lettre:null,num:'',cage:null,prev:null,msg:''});
+  gabBulle(); document.getElementById('gab').classList.add('show'); gabRender();
 }
 function gabQuit(){
-  if(!confirm('Quitter le mode simplifié et revenir à l\'appli complète ?')) return;
+  if(!confirm("Revenir à l'appli complète ?")) return;
   try{ localStorage.removeItem('modeG'); }catch(e){}
-  document.getElementById('gab').classList.remove('show');
-  render();
+  document.getElementById('gab').classList.remove('show'); render();
 }
-const gabKey = d => d.floor+'-'+d.index;
-// portes dans l'ordre de passage : RDC d'abord, puis on monte
-const gabOrder = b => b.doors.slice().sort((x,y)=>x.floor-y.floor || x.index-y.index);
-function gabNext(b){
-  const todo=gabOrder(b).filter(d=>d.status==='todo');
-  if(gabFocus){ const f=todo.find(d=>gabKey(d)===gabFocus); if(f) return f; }
-  return todo.find(d=>!gabSkip.has(gabKey(d))) || todo[0] || null;   // portes passées : on y revient à la fin
+// bulles d'explication : la 1re fois qu'elle arrive sur un écran (ou quand elle demande "Réexplique-moi")
+function gabCleBulle(){ return G.ecran==='numero' ? (G.lieu==='ma'?'numeroMA':'numeroP') : G.ecran; }
+function gabBulle(force){
+  const k=gabCleBulle();
+  G.bulle = (GAB_TXT[k] && (force || !gabVu(k))) ? GAB_TXT[k].slice() : [];
 }
-function gabPickCage(id){ gabCage=id; gabSkip=new Set(); gabLast=null; gabFocus=null; gabRender(); window.scrollTo(0,0); }
-function gabBack(){ gabCage=null; gabRender(); }
-function gabCite(id){ switchCite(id); gabRender(); }
-function gabSet(status){
-  const b=DB.buildings.find(x=>x.id===gabCage); if(!b) return;
-  const d=gabNext(b); if(!d) return;
-  gabLast={floor:d.floor,index:d.index,status:d.status,date:d.date};
-  d.status=status; d.date=new Date().toISOString().slice(0,10);
-  gabFocus=null; gabSkip.delete(gabKey(d));
-  save(); gabToast(`✓ ${floorName(d.floor)}, porte ${d.index+1} : ${labelOf(status)}`);
-  render();
-}
-function gabPass(){
-  const b=DB.buildings.find(x=>x.id===gabCage); if(!b) return;
-  const d=gabNext(b); if(!d) return;
-  gabSkip.add(gabKey(d)); gabFocus=null;
-  const todo=b.doors.filter(x=>x.status==='todo');
-  if(todo.every(x=>gabSkip.has(gabKey(x)))) gabSkip=new Set([gabKey(d)]);   // tout passé : on repart du début
-  gabRender();
-}
-function gabUndo(){
-  const b=DB.buildings.find(x=>x.id===gabCage); if(!b||!gabLast) return;
-  const d=b.doors.find(x=>x.floor===gabLast.floor&&x.index===gabLast.index);
-  if(d){ d.status=gabLast.status; d.date=gabLast.date; gabFocus=gabKey(d); save(); gabToast(`↩ ${floorName(d.floor)}, porte ${d.index+1} : annulé`); }
-  gabLast=null; render();
-}
+function gabBulleSuite(){ G.bulle.shift(); if(!G.bulle.length) gabMarque(gabCleBulle()); gabRender(); }
+function gabReexplique(){ gabBulle(true); G.msg=''; gabRender(); window.scrollTo(0,0); }
+function gabAller(ecran){ G.ecran=ecran; G.msg=''; gabBulle(); gabRender(); document.getElementById('gab').scrollTop=0; }
 function gabToast(txt){
   const t=document.getElementById('gabToast'); t.textContent=txt; t.classList.add('show');
-  clearTimeout(gabToastT); gabToastT=setTimeout(()=>t.classList.remove('show'),2200);
+  clearTimeout(gabToastT); gabToastT=setTimeout(()=>t.classList.remove('show'),2000);
 }
+// 1) le lieu
+function gabLieu(l){ G.lieu=l; G.lettre=null; G.num=''; switchCite(l); gabAller('numero'); }
+// 2) le numéro de cage
+function gabLettre(x){ G.lettre=x; G.num=document.getElementById('gNum').value; gabRender(); }
+function gabValiderNum(){
+  G.num=(document.getElementById('gNum').value||'').trim();
+  const n=parseInt(G.num,10);
+  if(!n){ G.msg="Il me manque le numéro de la cage : tape-le dans la case, puis touche « C'est parti »."; return gabRender(); }
+  if(G.lieu==='ma' && !G.lettre){ G.msg="Il me manque juste la lettre : coche A ou M, selon ce qui est écrit à côté du numéro."; return gabRender(); }
+  const sq = G.lieu==='ma' ? G.lettre : 'P';
+  const b=DB.buildings.find(x=>x.num===n && x.sq===sq);
+  if(!b){ G.msg=`Je ne trouve pas la cage ${n}${G.lieu==='ma'?' '+sq:''} dans la liste. Ce n'est pas grave : vérifie le numéro à l'entrée du hall, et si c'est bien celui-là, envoie un petit message à Alex.`; return gabRender(); }
+  G.cage=b.id; G.prev=null;
+  G.floor=gabEtages(b)[0] ?? 0; G.index=0;
+  gabAller('porte');
+}
+// 3) la porte devant elle
+const gabEtages = b => [...new Set(b.doors.map(d=>d.floor))].sort((x,y)=>x-y);   // étages qui ont des portes
+const gabPortes = (b,f) => b.doors.filter(d=>d.floor===f).sort((x,y)=>x.index-y.index);
+function gabSet(status){
+  const b=DB.buildings.find(x=>x.id===G.cage); if(!b) return;
+  const portes=gabPortes(b,G.floor), d=portes[G.index]; if(!d) return;
+  d.status=status; d.date=new Date().toISOString().slice(0,10);
+  save();
+  gabToast(`C'est noté : ${labelOf(status)} ✓`);
+  G.prev={floor:G.floor,index:G.index};
+  if(G.index+1<portes.length){ G.index++; G.bulle=[]; }
+  else { G.ecran='etage'; G.finEtage=true; G.bulle=[]; }
+  render();
+}
+function gabRetour(){ if(!G.prev) return; G.floor=G.prev.floor; G.index=G.prev.index; G.prev=null; G.ecran='porte'; G.msg=''; G.bulle=["Pas de souci, on est revenus à la porte d'avant. Touche la bonne réponse."]; gabRender(); }
+function gabEtage(){ G.ecran='etage'; G.finEtage=false; G.bulle=[]; gabRender(); }
+function gabBouge(sens){
+  const b=DB.buildings.find(x=>x.id===G.cage); if(!b) return;
+  const et=gabEtages(b), i=et.indexOf(G.floor);
+  const cible = sens>0 ? et.find(f=>f>G.floor) : [...et].reverse().find(f=>f<G.floor);
+  if(cible===undefined) return;
+  G.floor=cible; G.index=0; G.prev=null; G.ecran='porte'; G.bulle=[]; G.msg=''; gabRender();
+}
+function gabFini(){ G.ecran='fini'; G.bulle=[]; gabRender(); }
+function gabMerci(){ G.ecran='merci'; G.bulle=[]; gabRender(); }
 const GAB_ICON = {
   interesse:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
-  visite:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   absent:'<path d="M5 21V4h9v17M3 21h13M11 12h.01M17 8l4 4M21 8l-4 4"/>',
   refus:'<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>'
 };
+const gabEtageNom = f => f===0 ? 'Rez-de-chaussée' : floorName(f)+' étage';
 function gabRender(){
   const root=document.getElementById('gab'); if(!root || !root.classList.contains('show')) return;
-  const sync=(document.getElementById('fbstatus')||{}).textContent||'';
-  const b=gabCage && DB.buildings.find(x=>x.id===gabCage);
-  let h='';
-  if(!b){
-    // 1) choisir sa cage
-    gabCage=null;
-    const squares=CITES[activeCite].squares;
-    const cages=DB.buildings.filter(x=>squares.includes(x.sq)).sort((x,y)=>(x.sq>y.sq?1:x.sq<y.sq?-1:0)||(x.num-y.num));
-    h+=`<div class="g-head"><h2>Bonjour Gabrielle</h2><p>Touche la cage où tu es.</p><div class="g-sync">${esc(sync)}</div></div><div class="g-body">`;
-    h+=`<div class="g-cites">${Object.keys(CITES).map(id=>`<button type="button" class="${id===activeCite?'sel':''}" onclick="gabCite('${id}')">${CITES[id].name}</button>`).join('')}</div>`;
-    if(!cages.length) h+=`<p style="font-size:19px;text-align:center;color:var(--muted);margin:30px 0">Aucune cage ici pour l'instant.</p>`;
-    h+=`<div class="g-grid">${cages.map(c=>{
-      const reste=c.doors.filter(d=>d.status==='todo').length;
-      const fini=c.doors.length>0&&reste===0;
-      return `<button type="button" class="g-cage ${fini?'fini':''}" onclick="gabPickCage('${c.id}')"><b>${c.num} ${c.sq}</b><span>${fini?'Finie ✓':reste+(reste>1?' portes à faire':' porte à faire')}</span></button>`;
-    }).join('')}</div>`;
-  } else {
-    // 2) la porte suivante
-    const d=gabNext(b), total=b.doors.length, faites=b.doors.filter(x=>x.status!=='todo').length;
-    h+=`<div class="g-head"><h2>Cage ${b.num} ${esc(SQNAME[b.sq]||'')}</h2><p>${faites} porte${faites>1?'s':''} faite${faites>1?'s':''} sur ${total}</p><div class="g-sync">${esc(sync)}</div></div><div class="g-body">`;
-    h+=`<button type="button" class="g-big" onclick="gabBack()">← Changer de cage</button>`;
-    if(!d){
-      h+=`<div class="g-fin">Cage finie, bravo !</div><p style="text-align:center;font-size:19px;margin:0">Toutes les portes sont faites.</p>`;
-      h+=`<button type="button" class="g-big prim" onclick="gabBack()">Choisir une autre cage</button>`;
-    } else {
-      h+=`<div class="g-door"><div class="g-et">${d.floor===0?'Rez-de-chaussée':floorName(d.floor)+' étage'}</div><div class="g-po">Porte ${d.index+1}</div>${d.note?`<div class="g-av">Note : ${esc(d.note)}</div>`:''}</div>`;
-      h+=`<div class="g-q">Qu'est-ce qui s'est passé ?</div>`;
-      GAB_ST.forEach(s=>{
-        h+=`<button type="button" class="g-st" style="background:${colorOf(s.key)}" onclick="gabSet('${s.key}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GAB_ICON[s.key]}</svg><span><b>${s.t}</b><small>${s.d}</small></span></button>`;
-      });
-      h+=`<div class="g-row"><button type="button" class="g-big" onclick="gabPass()">Passer cette porte</button></div>`;
-    }
-    if(gabLast) h+=`<button type="button" class="g-big" onclick="gabUndo()">↩ Annuler la dernière porte</button>`;
+  const inp=document.getElementById('gNum'), focus=inp && document.activeElement===inp;
+  if(inp) G.num=inp.value;   // une mise à jour d'un équipier ne doit pas effacer ce qu'elle tape
+  const b=G.cage && DB.buildings.find(x=>x.id===G.cage);
+  if(['porte','etage','fini'].includes(G.ecran) && !b) G.ecran='lieu';
+  if(G.ecran==='etage'){
+    const et=gabEtages(b), autre=et.some(f=>f!==G.floor);
+    G.msg = G.finEtage ? (autre ? "Toutes les portes de cet étage sont faites, merci ! On change d'étage ?" : "Toutes les portes de cette cage sont faites, merci !") : '';
   }
-  h+=`<button type="button" class="g-quit" onclick="gabQuit()">Quitter le mode simplifié</button></div>`;
-  root.innerHTML=h;
+  const bulle = G.bulle.length
+    ? `<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>${esc(G.bulle[0])}</p><button type="button" class="g-ok" onclick="gabBulleSuite()">${G.bulle.length>1?'Suivant ›':"D'accord"}</button></div></div>`
+    : (G.msg ? `<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>${esc(G.msg)}</p></div></div>` : '');
+  const cageNom = b ? `Cage ${b.num}${b.sq!=='P'?' '+b.sq:''}` : '';
+  let head='', corps='';
+  if(G.ecran==='lieu'){
+    head=`<h2>Salut Gabi</h2><p>On commence par l'endroit où tu es.</p>`;
+    corps=`<div class="g-q">Tu es :</div>
+      <button type="button" class="g-choix" onclick="gabLieu('ma')">au square de l'Avre et des Moulineaux</button>
+      <button type="button" class="g-choix" onclick="gabLieu('ph')">à la Place Haute</button>
+      <div class="g-liens" style="margin-top:auto"><button type="button" class="g-lien petit" onclick="gabReexplique()">Réexplique-moi</button><button type="button" class="g-lien petit" onclick="gabQuit()">Revenir à l'appli complète</button></div>`;
+  } else if(G.ecran==='numero'){
+    head=`<h2>${G.lieu==='ma'?"Square de l'Avre et des Moulineaux":'Place Haute'}</h2><p>Quel est le numéro de la cage ?</p>`;
+    corps=`<label for="gNum" class="g-q" style="text-transform:none;letter-spacing:0;color:var(--ink)">Numéro de la cage</label>
+      <input id="gNum" class="g-num" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(G.num)}" onkeydown="if(event.key==='Enter')gabValiderNum()" />
+      ${G.lieu==='ma'?`<div style="font-size:19px;font-weight:600">Coche la lettre écrite à côté :</div>
+      <div class="g-lettres">${['A','M'].map(x=>`<button type="button" class="g-lettre ${G.lettre===x?'on':''}" aria-pressed="${G.lettre===x}" onclick="gabLettre('${x}')"><span class="g-case">${G.lettre===x?'✓':''}</span>${x}</button>`).join('')}</div>`:''}
+      <button type="button" class="g-choix prim" onclick="gabValiderNum()">C'est parti</button>
+      <div class="g-liens"><button type="button" class="g-lien petit" onclick="gabAller('lieu')">← Je ne suis pas là</button><button type="button" class="g-lien petit" onclick="gabReexplique()">Réexplique-moi</button></div>`;
+  } else if(G.ecran==='porte'){
+    const portes=gabPortes(b,G.floor), d=portes[G.index];
+    head=`<h2>${cageNom}</h2><p>${gabEtageNom(G.floor)}</p>`;
+    corps = d ? `<div class="g-door"><div class="g-et">${gabEtageNom(G.floor)}</div><div class="g-po">Porte ${d.index+1}</div>${d.status!=='todo'?`<div class="g-deja">Déjà noté : ${labelOf(d.status)}. Tu peux changer si besoin.</div>`:''}</div>
+      ${['interesse','absent','refus'].map(k=>`<button type="button" class="g-st" style="background:${colorOf(k)}" onclick="gabSet('${k}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GAB_ICON[k]}</svg>${labelOf(k)}</button>`).join('')}`
+      : `<p>Il n'y a pas de porte enregistrée à cet étage.</p>`;
+    corps+=`<div class="g-liens"><button type="button" class="g-lien" onclick="gabEtage()">On change d'étage…</button><button type="button" class="g-lien" onclick="gabFini()">On a fini…</button>
+      ${G.prev?`<button type="button" class="g-lien petit" onclick="gabRetour()">Revenir à la porte d'avant</button>`:''}<button type="button" class="g-lien petit" onclick="gabReexplique()">Réexplique-moi</button></div>`;
+  } else if(G.ecran==='etage'){
+    const et=gabEtages(b), haut=et.some(f=>f>G.floor), bas=et.some(f=>f<G.floor);
+    head=`<h2>${cageNom}</h2><p>Tu es au ${gabEtageNom(G.floor).toLowerCase()}</p>`;
+    corps=`<div class="g-q">On monte ? On descend ?</div>
+      ${haut?`<button type="button" class="g-choix prim" onclick="gabBouge(1)">↑ On monte</button>`:`<p style="margin:0;color:var(--muted)">Tu es au dernier étage.</p>`}
+      ${bas?`<button type="button" class="g-choix prim" onclick="gabBouge(-1)">↓ On descend</button>`:`<p style="margin:0;color:var(--muted)">Tu es au rez-de-chaussée.</p>`}
+      <div class="g-liens">${G.finEtage?'':`<button type="button" class="g-lien" onclick="gabAller('porte')">Non, je reste à cet étage</button>`}<button type="button" class="g-lien" onclick="gabFini()">On a fini…</button>
+      ${G.prev?`<button type="button" class="g-lien petit" onclick="gabRetour()">Revenir à la porte d'avant</button>`:''}</div>`;
+  } else if(G.ecran==='fini'){
+    head=`<h2>${cageNom}</h2><p>On s'arrête là pour cette cage ?</p>`;
+    corps=`<button type="button" class="g-choix prim" onclick="gabMerci()">Oui, j'ai fini</button>
+      <button type="button" class="g-choix" onclick="gabAller('porte')">Non, je continue</button>`;
+  } else if(G.ecran==='merci'){
+    head=`<h2>Merci Gabi !</h2><p>Tout est enregistré.</p>`;
+    corps=`<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>Merci pour ton aide, tout ce que tu as noté est bien arrivé dans la base.</p></div></div>
+      <button type="button" class="g-choix prim" onclick="G.cage=null;gabAller('lieu')">Faire une autre cage</button>`;
+  }
+  root.innerHTML=`<div class="g-head">${head}</div><div class="g-body">${bulle}${corps}</div>`;
+  if(focus){ const i=document.getElementById('gNum'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
 }
 
 /* ---------- UI helpers ---------- */
@@ -1080,7 +1127,7 @@ document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>{ setTab(b.d
 document.querySelectorAll('.overlay').forEach(o=> o.onclick=e=>{ if(e.target===o) o.classList.remove('show'); });
 
 initCiteSelector();
-if(gabOn()) document.getElementById('gab').classList.add('show');   // Gabrielle retrouve directement son écran
+if(gabOn()){ gabBulle(); document.getElementById('gab').classList.add('show'); }   // Gabrielle retrouve directement son écran
 render();
 loadBuildings();   // secours si data/buildings.js n'a pas chargé
 initFirebase();
