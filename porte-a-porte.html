@@ -966,6 +966,32 @@ function restoreJSON(input){
 // on rappelle que rien ne casse et qu'on peut toujours corriger.
 const G = { ecran:'lieu', lieu:null, lettre:null, num:'', cage:null, floor:0, index:0, prev:null, bulle:[], msg:'', sens:1, autres:false };
 let gabToastT=null;
+// Rappel doux : 3 min sans toucher l'écran des portes -> vibration (Android) + une bulle d'Alex. Un seul rappel par porte.
+const GAB_RAPPEL_MS = 3*60*1000;
+let gabRappelT=null, gabRappelFait=false, gabCompte=0, gabVeille=null;
+function gabArmerRappel(relancer=true){
+  const actif = document.getElementById('gab').classList.contains('show') && G.ecran==='porte' && !gabRappelFait;
+  if(!actif){ clearTimeout(gabRappelT); gabRappelT=null; return; }
+  if(gabRappelT && !relancer) return;   // un simple rafraîchissement (mise à jour d'un équipier) ne relance pas le compte
+  clearTimeout(gabRappelT); gabRappelT=setTimeout(()=>{ gabRappelT=null; gabRappel(); }, GAB_RAPPEL_MS);
+}
+function gabRappel(){
+  if(G.ecran!=='porte') return;
+  gabRappelFait=true;
+  try{ if(navigator.vibrate) navigator.vibrate([300,150,300]); }catch(e){}
+  G.rappel=true; gabRender();
+}
+function gabEncore(){ G.rappel=false; gabRappelFait=false; gabRender(); gabArmerRappel(); }   // "Je discute encore"
+// l'écran reste allumé pendant le porte-à-porte, sinon le téléphone met la page en pause (pas de rappel possible)
+async function gabGarderEcran(){
+  const on = document.getElementById('gab').classList.contains('show') && ['porte','etage','depart'].includes(G.ecran);
+  try{
+    if(on && !gabVeille && 'wakeLock' in navigator && document.visibilityState==='visible'){ gabVeille=await navigator.wakeLock.request('screen'); gabVeille.addEventListener('release',()=>{ gabVeille=null; }); }
+    else if(!on && gabVeille){ await gabVeille.release(); gabVeille=null; }
+  }catch(e){ gabVeille=null; }
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ gabGarderEcran(); gabArmerRappel(false); } });
+document.addEventListener('pointerdown',e=>{ if(e.target.closest && e.target.closest('#gab')) gabArmerRappel(); },true);
 const gabOn = () => { try{ return localStorage.getItem('modeG')==='1'; }catch(e){ return false; } };
 const gabVu = k => { try{ return localStorage.getItem('gabVu_'+k)==='1'; }catch(e){ return false; } };
 const gabMarque = k => { try{ localStorage.setItem('gabVu_'+k,'1'); }catch(e){} };
@@ -1043,7 +1069,9 @@ function gabSet(status){
   const portes=gabPortes(b,G.floor), d=portes[G.index]; if(!d) return;
   d.status=status; d.date=new Date().toISOString().slice(0,10);
   save();
-  gabToast(`C'est noté : ${labelOf(status)} ✓`);
+  gabCompte++; G.rappel=false; gabRappelFait=false;
+  const bravo = {5:"5 portes déjà, merci Gabi !",10:"10 portes, beau travail !",20:"20 portes aujourd'hui, un grand merci !",30:"30 portes, bravo !",50:"50 portes, chapeau !"}[gabCompte];
+  gabToast(bravo || `C'est noté : ${labelOf(status)} ✓`);
   G.prev={floor:G.floor,index:G.index};
   if(G.index+1<portes.length){ G.index++; G.bulle=[]; }
   else { G.ecran='etage'; G.finEtage=true; G.bulle=[]; }
@@ -1080,6 +1108,7 @@ function gabRender(){
     ? `<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>${esc(G.bulle[0])}</p><button type="button" class="g-ok" onclick="gabBulleSuite()">${G.bulle.length>1?'Suivant ›':"D'accord"}</button></div></div>`
     : (G.msg ? `<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>${esc(G.msg)}</p></div></div>` : '');
   const cageNom = b ? `Cage ${b.num}${b.sq!=='P'?' '+b.sq:''}` : '';
+  const rappel = (G.rappel && G.ecran==='porte') ? `<div class="g-bulle" style="border-color:var(--jaune)"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>Tu es toujours là ? Quand tu as fini à cette porte, touche ce qui s'est passé juste en dessous. Si tu discutes encore, prends ton temps !</p><button type="button" class="g-ok" onclick="gabEncore()">Je discute encore</button></div></div>` : '';
   let head='', corps='';
   if(G.ecran==='lieu'){
     head=`<h2>Salut Gabi</h2><p>On commence par l'endroit où tu es.</p>`;
@@ -1128,10 +1157,12 @@ function gabRender(){
       <button type="button" class="g-choix" onclick="gabAller('porte')">Non, je continue</button>`;
   } else if(G.ecran==='merci'){
     head=`<h2>Merci Gabi !</h2><p>Tout est enregistré.</p>`;
-    corps=`<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>Merci pour ton aide, tout ce que tu as noté est bien arrivé dans la base.</p></div></div>
+    corps=`<div class="g-bulle"><div class="g-ava">A</div><div><div class="g-qui">Alex</div><p>Merci pour ton aide${gabCompte?` : ${gabCompte} porte${gabCompte>1?'s':''} notée${gabCompte>1?'s':''} aujourd'hui`:''}. Tout est bien arrivé dans la base.</p></div></div>
       <button type="button" class="g-choix prim" onclick="G.cage=null;gabAller('lieu')">Faire une autre cage</button>`;
   }
-  root.innerHTML=`<div class="g-head">${head}</div><div class="g-body">${bulle}${corps}</div>`;
+  root.innerHTML=`<div class="g-head">${head}</div><div class="g-body">${rappel}${bulle}${corps}</div>`;
+  if(G.ecran!=='porte') G.rappel=false;
+  gabArmerRappel(false); gabGarderEcran();
   if(focus){ const i=document.getElementById('gNum'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
 }
 
