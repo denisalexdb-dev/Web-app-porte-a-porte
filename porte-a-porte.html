@@ -61,8 +61,10 @@
   .addoor{width:26px;height:26px;flex-shrink:0;border:1px solid var(--line);background:#fff;border-radius:7px;color:var(--accent);font-size:18px;font-weight:600;line-height:1;cursor:pointer;padding:0}
   .addoor:active,.delfloor:active{transform:scale(.94)}
   .delfloor{width:26px;height:26px;flex-shrink:0;border:1px solid #f0b3b3;background:#fff;border-radius:7px;color:#E24B4A;font-size:17px;font-weight:600;line-height:1;cursor:pointer;padding:0;margin-left:6px}
-  .doors{display:flex;gap:6px;flex:1}
-  .door{flex:1;min-width:0;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer;border:0;position:relative}
+  .doors{display:grid;gap:6px;flex:1;min-width:0}
+  .door{min-width:0;height:48px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#fff;font-size:12px;line-height:1.1;cursor:pointer;border:0;position:relative;padding:0}
+  .door b{font-size:15px}
+  .floor+.floor{border-top:1px solid var(--line);padding-top:8px}
   .door.todo{background:var(--todo);border:1px dashed #cbd0d6;color:#9aa0a6}
   .door .note-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9}
   .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
@@ -91,12 +93,12 @@
   .metric .l{font-size:12px;color:var(--muted);margin-top:2px}
   .metric .n small{font-size:14px;color:var(--muted);font-weight:400}
   /* pastilles de la carte */
-  .pin-in{width:34px;height:34px;border-radius:50%;background:#EF9F27;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);
+  .pin-in{box-sizing:border-box;border-radius:50%;background:#EF9F27;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);
     display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:transform .15s}
   .pin.done .pin-in{background:#378ADD}
-  .pin-in b{font-size:14px;margin-top:1px}
-  .pin-in i{font-size:11px;font-weight:700;font-style:normal;margin-top:-2px;letter-spacing:.5px}
-  .far .pin-in{transform:scale(.55)}
+  .pin-in b{font-size:.41em;margin-top:1px}
+  .pin-in i{font-size:.32em;font-weight:700;font-style:normal;margin-top:-1px;letter-spacing:.5px}
+  .far .pin-in{transform:scale(.7)}
   .far .pin.cand{display:none}
   .cpop{text-align:center;font:13px sans-serif;min-width:130px}
   .cpop div{margin-top:8px}
@@ -390,7 +392,8 @@ try {
   map.addControl(new Home());
   frameCite(true);
   let rzT; window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT=setTimeout(()=>frameCite(false),150); });
-  map.on('zoomend', updateZoomClass);
+  map.on('zoomend', ()=>{ updateZoomClass(); drawMarkers(); });
+  setTimeout(()=>{ const h=document.getElementById('hint'); if(h) h.style.display='none'; }, 6000);
   // taper un porche manqué -> cage (pas en vue large, pour éviter les créations par erreur)
   map.on('click', e=>{ if(!isFar()) openCageModal(e.latlng.lat, e.latlng.lng, 4); });
 } catch(err){
@@ -425,9 +428,15 @@ function cageConflicts(){
   DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen[k])dup.add(k); seen[k]=true; } });
   return dup;
 }
-function pastilleIcon(text, sq, cls){
-  return L.divIcon({className:'pin '+cls, iconSize:[34,34], iconAnchor:[17,17],
-    html:`<div class="pin-in"><b>${text}</b><i>${sq}</i></div>`});
+// taille des pastilles selon le zoom : ~11 m sur le terrain, entre 24 et 34 px
+function pinSize(){
+  if(!map) return 34;
+  const mpp=40075016.7*Math.cos(map.getCenter().lat*Math.PI/180)/(256*Math.pow(2,map.getZoom()));   // mètres par pixel
+  return Math.max(24, Math.min(34, Math.round(11/mpp)));
+}
+function pastilleIcon(text, sq, cls, size){
+  return L.divIcon({className:'pin '+cls, iconSize:[size,size], iconAnchor:[size/2,size/2],
+    html:`<div class="pin-in" style="width:${size}px;height:${size}px;font-size:${size}px"><b>${text}</b><i>${sq}</i></div>`});
 }
 let cageLabelById={};
 // cages créées (numéro figé) + détections restantes ("+"). Renseigne cageLabelById.
@@ -453,20 +462,36 @@ function cageLabel(b){
 function drawMarkers(){
   if(!map) return;
   ensureOutlines();
-  const ms=[];
+  const size=pinSize(), ms=[];
   buildEntries().forEach(e=>{
-    if(e.kind==='cage'){
-      const m=L.marker([e.lat,e.lng],{icon:pastilleIcon(e.num+(e.conflict?'*':''), e.sq, cageDone(e.b)?'done':'todo')});
-      m.on('click',()=>openDetail(e.b.id)); ms.push(m);
-    } else {
-      ms.push(L.marker([e.lat,e.lng],{icon:pastilleIcon('+', e.sq, 'todo cand')})
-        .bindPopup(`<div class="cpop">Entrée de cage&nbsp;?<div>
+    const cage = e.kind==='cage';
+    const m=L.marker([e.lat,e.lng],{icon: cage
+      ? pastilleIcon(e.num+(e.conflict?'*':''), e.sq, cageDone(e.b)?'done':'todo', size)
+      : pastilleIcon('+', e.sq, 'todo cand', size)});
+    m.on('click',()=>{
+      if(zoomIfCrowded(e.lat,e.lng,size)) return;   // plusieurs pastilles sous le doigt : on zoome d'abord
+      if(cage) openDetail(e.b.id);
+      else L.popup({offset:[0,-size/2]}).setLatLng([e.lat,e.lng]).setContent(`<div class="cpop">Entrée de cage&nbsp;?<div>
           <button class="ok" onclick="openCageModal(${e.lat},${e.lng},${e.levels})">Créer</button>
-          <button onclick="dismissCandidate(${e.lat},${e.lng})">Retirer</button></div></div>`));
-    }
+          <button onclick="dismissCandidate(${e.lat},${e.lng})">Retirer</button></div></div>`).openOn(map);
+    });
+    ms.push(m);
   });
   if(markerLayer) map.removeLayer(markerLayer);
   markerLayer=L.layerGroup(ms).addTo(map);
+}
+// deux pastilles (ou plus) qui se touchent à l'écran : zoom centré dessus au lieu d'ouvrir la mauvaise
+function zoomIfCrowded(lat,lng,size){
+  const p=map.latLngToContainerPoint([lat,lng]);
+  const far=isFar();
+  const crowded=markerLayer.getLayers().some(m=>{
+    const ll=m.getLatLng(); if(ll.lat===lat&&ll.lng===lng) return false;
+    if(far && m.options.icon.options.className.includes('cand')) return false;   // "+" masqués en vue large
+    return map.latLngToContainerPoint(ll).distanceTo(p) < size*0.9;
+  });
+  if(!crowded || map.getZoom() >= map.getMaxZoom()-0.5) return false;
+  map.flyTo([lat,lng], Math.min(map.getMaxZoom(), map.getZoom()+1.5), {duration:.4});
+  return true;
 }
 // corriger le numéro / square figé d'une cage
 function setCageNum(id,val){
@@ -479,54 +504,58 @@ function setCageSquare(id,sq){
 }
 
 /* ---------- Contours immeubles + détection des cages d'escalier ---------- */
-const DET={apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
+// Les entrées sont repérées par les petits porches / auvents dessinés sur la carte (1 à 15 m²)
+// collés à la façade d'un immeuble. Les décrochés de façade ne sont plus utilisés : trop de fausses entrées.
+const DET={porchMin:1, porchMax:15, bigMin:250, touch:1, merge:8, nearCage:8};
 let candidates=null;   // entrées détectées : calculées une seule fois (la géométrie ne bouge pas)
 
-function projM(coords){
-  const lat0=coords[0][0]*Math.PI/180, mLat=111320, mLon=111320*Math.cos(lat0);
-  const p=coords.map(([la,lo])=>[(lo-coords[0][1])*mLon,(la-coords[0][0])*mLat]);
-  if(p.length>1){const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01)p.pop();}
-  return {p,mLat,mLon};
+const M_LAT=111320;
+const mLonAt=lat=>111320*Math.cos(lat*Math.PI/180);
+function polyArea(pts){
+  let a=0; const n=pts.length;
+  for(let i=0;i<n;i++){const[x1,y1]=pts[i],[x2,y2]=pts[(i+1)%n];a+=x1*y2-x2*y1;}
+  return Math.abs(a/2);
 }
-function signedArea(p){
-  let a=0; const n=p.length;
-  for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];a+=x1*y2-x2*y1;}
-  return a/2;
-}
-// Détecte les entrées (redans) -> [[lat,lon],...]
-function detectEntrances(coords){
-  const {p,mLat,mLon}=projM(coords); const n=p.length;
-  if(n<6) return [];
-  const area=signedArea(p); if(Math.abs(area)<DET.minArea) return [];
-  const ccw=area>0;
-  const len=i=>{const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];return Math.hypot(x2-x1,y2-y1);};
-  const turn=i=>{const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n];
-    const ax=b[0]-a[0],ay=b[1]-a[1],bx=c[0]-b[0],by=c[1]-b[1];
-    const t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
-  const cand=[];
-  for(let i=0;i<n;i++){
-    const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax)continue;
-    if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv)continue;              // deux coins convexes
-    if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank)continue;      // côtés = profondeur du porche
-    const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
-    const dx=(b[0]-a[0])/eLen, dy=(b[1]-a[1])/eLen;
-    const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                // normale extérieure
-    const e=[mx+nx*1.6, my+ny*1.6];
-    if(!cand.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge)) cand.push(e);
-  }
-  return cand.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
+function segDist(pt,a,b){
+  const dx=b[0]-a[0], dy=b[1]-a[1], l2=dx*dx+dy*dy||1;
+  const t=Math.max(0,Math.min(1,((pt[0]-a[0])*dx+(pt[1]-a[1])*dy)/l2));
+  return Math.hypot(pt[0]-a[0]-t*dx, pt[1]-a[1]-t*dy);
 }
 function getCandidates(){
-  if(!candidates && buildingsData)
-    candidates=buildingsData.flatMap(bd=>detectEntrances(bd.coords)
-      .map(([lat,lng])=>({lat,lng,levels:bd.levels||4,sq:squareOf(lat,lng)})));
-  return candidates||[];
+  if(candidates || !buildingsData) return candidates||[];
+  const mLon=mLonAt(48.83);
+  // polygones en mètres (sans le point de fermeture)
+  const polys=buildingsData.map(b=>{
+    const pts=b.coords.map(([la,lo])=>[lo*mLon, la*M_LAT]);
+    const a=pts[0], z=pts[pts.length-1]; if(pts.length>1 && Math.hypot(a[0]-z[0],a[1]-z[1])<0.01) pts.pop();
+    return {b, pts, area:polyArea(pts)};
+  });
+  const big=polys.filter(x=>x.area>=DET.bigMin);
+  const found=[];
+  polys.filter(x=>x.area>=DET.porchMin && x.area<=DET.porchMax).forEach(x=>{
+    // immeuble le plus proche du porche (distance des sommets du porche à ses façades)
+    let best=null, bestD=Infinity;
+    big.forEach(g=>{
+      for(const v of x.pts) for(let i=0;i<g.pts.length;i++){
+        const d=segDist(v,g.pts[i],g.pts[(i+1)%g.pts.length]);
+        if(d<bestD){ bestD=d; best=g; }
+      }
+    });
+    if(bestD>DET.touch) return;   // porche isolé (abri, local…) : ignoré
+    const cx=x.pts.reduce((s,v)=>s+v[0],0)/x.pts.length, cy=x.pts.reduce((s,v)=>s+v[1],0)/x.pts.length;
+    found.push({x:cx, y:cy, area:x.area, levels:best.b.levels||4});
+  });
+  // auvent + marche d'une même entrée : on fusionne (le plus grand porche gagne)
+  found.sort((a,b)=>b.area-a.area);
+  const kept=[];
+  found.forEach(f=>{ if(!kept.some(k=>Math.hypot(k.x-f.x,k.y-f.y)<DET.merge)) kept.push(f); });
+  candidates=kept.map(k=>{ const lat=k.y/M_LAT, lng=k.x/mLon; return {lat,lng,levels:k.levels,sq:squareOf(lat,lng)}; });
+  return candidates;
 }
 function nearM(c,lat,lng,m){
-  const mLon=111320*Math.cos(lat*Math.PI/180);
-  return Math.hypot((c.lat-lat)*111320,(c.lng-lng)*mLon)<m;
+  return Math.hypot((c.lat-lat)*M_LAT,(c.lng-lng)*mLonAt(lat))<m;
 }
-const isCage=c=>DB.buildings.some(b=>b.lat!=null&&nearM(c,b.lat,b.lng,5));
+const isCage=c=>DB.buildings.some(b=>b.lat!=null&&nearM(c,b.lat,b.lng,DET.nearCage));
 const isDismissed=c=>DB.dismissed.some(d=>nearM(c,d.lat,d.lng,5));
 
 // données des contours : intégrées (marche en double-clic, sans serveur), sinon fichier json
@@ -606,6 +635,8 @@ function goToCage(){
   if(b){ el.value=''; el.blur(); openDetail(b.id); }
   else { el.style.borderColor='#E24B4A'; }   // introuvable
 }
+// colonnes de portes par étage : 1 à 4 sur une ligne, au-delà deux lignes (6 -> 3+3, 8 -> 4+4)
+const doorCols = n => n<=4 ? Math.max(1,n) : Math.ceil(n/2);
 const floorName = f => f===0 ? 'RDC' : f===1 ? '1er' : f+'e';
 function renderDetail(){
   const b = curBuilding; if(!b) return;
@@ -621,10 +652,10 @@ function renderDetail(){
   const lbl = cageLabelById[b.id] || {num:b.num, sq:b.sq, conflict:false};
   html += `<div class="bcard" style="cursor:default;margin-top:-2px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#6b7280">
-        <span>N° de cage</span>
+        <span>N°</span>
         <input type="number" min="1" value="${lbl.num}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
         <span>Square</span>
-        ${Object.keys(SQNAME).map(sq=>`<button class="btn ghost" title="${SQNAME[sq]}" style="width:auto;margin:0;padding:8px 14px;${b.sq===sq?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','${sq}')">${sq}</button>`).join('')}
+        ${Object.keys(SQNAME).map(sq=>`<button class="btn ghost" title="${SQNAME[sq]}" style="width:auto;margin:0;padding:8px 12px;${b.sq===sq?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','${sq}')">${sq}</button>`).join('')}
       </div>
       ${lbl.conflict?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
     </div>`;
@@ -632,12 +663,12 @@ function renderDetail(){
   for(let f=b.floors-1; f>=0; f--){
     html += `<div class="floor">
       <button class="addoor" title="Ajouter une porte à cet étage" onclick="addDoorToFloor('${b.id}',${f})">+</button>
-      <div class="lab">${floorName(f)}</div><div class="doors">`;
+      <div class="lab">${floorName(f)}</div><div class="doors" style="grid-template-columns:repeat(${doorCols(b.doors.filter(d=>d.floor===f).length)},minmax(0,1fr))">`;
     b.doors.filter(d=>d.floor===f).forEach(d=>{
       const isTodo = d.status==='todo';
       html += `<button class="door ${isTodo?'todo':''}" style="${isTodo?'':'background:'+colorOf(d.status)}"
                  onclick="openDoor('${b.id}',${d.floor},${d.index})" title="${esc(d.note)}">
-                 🚪${d.note?'<span class="note-dot"></span>':''}</button>`;
+                 <span>🚪</span><b>${d.index+1}</b>${d.note?'<span class="note-dot"></span>':''}</button>`;
     });
     html += `</div><button class="delfloor" title="Supprimer cet étage" onclick="deleteFloor('${b.id}',${f})">×</button></div>`;
   }
