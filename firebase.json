@@ -11,16 +11,38 @@
       "sauvegarde-*.json"
     ],
     "rewrites": [
-      { "source": "/", "destination": "/porte-a-porte.html" }
+      {
+        "source": "/",
+        "destination": "/porte-a-porte.html"
+      }
     ],
     "headers": [
       {
         "source": "**/*.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       },
       {
         "source": "data/**",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ]
   }

@@ -89,6 +89,18 @@
   .metric .n{font-size:26px;font-weight:600}
   .metric .l{font-size:12px;color:var(--muted);margin-top:2px}
   .metric .n small{font-size:14px;color:var(--muted);font-weight:400}
+  /* pastilles de la carte */
+  .pin-in{width:34px;height:34px;border-radius:50%;background:#EF9F27;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:transform .15s}
+  .pin.done .pin-in{background:#378ADD}
+  .pin-in b{font-size:14px;margin-top:1px}
+  .pin-in i{font-size:11px;font-weight:700;font-style:normal;margin-top:-2px;letter-spacing:.5px}
+  .far .pin-in{transform:scale(.55)}
+  .far .pin.cand{display:none}
+  .cpop{text-align:center;font:13px sans-serif;min-width:130px}
+  .cpop div{margin-top:8px}
+  .cpop button{padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7;font:inherit}
+  .cpop button.ok{border:0;background:#378ADD;color:#fff;font-weight:600}
 </style>
 </head>
 <body>
@@ -184,10 +196,13 @@ const STATUSES = [
   {key:'absent',    label:'Absent',    color:'#EF9F27'},
   {key:'refus',     label:'Refus',     color:'#E24B4A'},
 ];
-const colorOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).color;
-const labelOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).label;
+const STATUS_BY = Object.fromEntries(STATUSES.map(s=>[s.key,s]));
+const colorOf = k => (STATUS_BY[k]||STATUSES[0]).color;
+const labelOf = k => (STATUS_BY[k]||STATUSES[0]).label;
 
-let DB = JSON.parse(localStorage.getItem('pap')||'null') || {buildings:[]};
+let DB;
+try { DB = JSON.parse(localStorage.getItem('pap')||'null'); } catch(e){ DB = null; }   // stockage abîmé -> on repart à vide (Firestore resynchronise)
+if(!DB || !Array.isArray(DB.buildings)) DB = {buildings:[]};
 if(!DB.dismissed) DB.dismissed=[];
 // compat : anciennes entrées "dismissed" au format [lat,lng] -> {lat,lng} (Firestore n'accepte pas les tableaux imbriqués)
 DB.dismissed = DB.dismissed.map(d=>Array.isArray(d)?{lat:d[0],lng:d[1]}:d);
@@ -271,11 +286,11 @@ function save(){
 
 let pendingLatLng = null;   // position du bâtiment en cours de création
 let curBuilding = null;     // bâtiment ouvert dans le détail
-let curDoor = null;         // {building, floor, index}
-let curDoorStatus = 'todo';
+let curDoor = null;         // {b, d}
 
 /* ---------- Carte ---------- */
-let map = null, markers = [];
+let map = null, homeZoom = 0;
+let outlineLayer = null, markerLayer = null, buildingsData = window.BUILDINGS_DATA || null;
 // fonds de carte (bascule via le bouton)
 const BASEMAPS = {
   plan: { label:'Plan', next:'satellite',
@@ -301,36 +316,53 @@ const CITES = {
   ma: { name:'Moulineaux / Avre', squares:['M','A'],
         edges:{ left:[48.8283903,2.2505021], right:[48.8281580,2.2536653] } },  // bords = 2 intersections
   ph: { name:'Place Haute', squares:['P'],
-        bounds:[[48.829288,2.233831],[48.831815,2.237565]] }
+        bounds:[[48.829288,2.233831],[48.831815,2.237565]],
+        // zone où l'on peut se déplacer : la dalle + le rond-point du Pont de Sèvres (ouest), avec de la marge
+        zone:[[48.8278,2.2268],[48.8322,2.2380]] }
 };
 let activeCite = CITES[localStorage.getItem('cite')] ? localStorage.getItem('cite') : 'ma';
 let framedCite = null;   // cité pour laquelle la carte est actuellement cadrée
 const mapVisible = () => document.getElementById('view-map').classList.contains('active');
-// cadre la carte sur la cité active (bords précis pour M/A, emprise pour Place Haute) + verrouille
-function frameCite(){
+// vue d'accueil d'une cité : bords précis pour M/A, emprise pour Place Haute
+function homeView(c){
+  if(c.edges){
+    const crs=map.options.crs;
+    const dx=crs.latLngToPoint(L.latLng(c.edges.right),0).x - crs.latLngToPoint(L.latLng(c.edges.left),0).x;
+    return { center:[(c.edges.left[0]+c.edges.right[0])/2,(c.edges.left[1]+c.edges.right[1])/2],
+             zoom:Math.log2(map.getSize().x/dx) };
+  }
+  const b=L.latLngBounds(c.bounds);
+  return { center:b.getCenter(), zoom:map.getBoundsZoom(b, false, L.point(36,36)) };
+}
+// cadre la carte sur la cité active et verrouille la zone.
+// recenter=false (rotation, clavier mobile…) : on ajuste seulement les limites, la vue ne saute pas
+function frameCite(recenter){
   if(!map) return;
   map.setMaxBounds(null); map.setMinZoom(0);
   map.invalidateSize();
-  if(map.getSize().x < 50) return;   // carte cachée (onglet non actif) -> on recadrera au retour
-  const c=CITES[activeCite];
-  if(c.edges){
-    const W=map.getSize().x, crs=map.options.crs;
-    const xl=crs.latLngToPoint(L.latLng(c.edges.left),0).x;
-    const xr=crs.latLngToPoint(L.latLng(c.edges.right),0).x;
-    const z=Math.log2(W/(xr-xl));
-    map.setView([(c.edges.left[0]+c.edges.right[0])/2,(c.edges.left[1]+c.edges.right[1])/2], z, {animate:false});
-  } else if(c.bounds){
-    map.fitBounds(c.bounds, {padding:[18,18]});
-  }
-  map.setMinZoom(map.getZoom());
-  map.setMaxBounds(map.getBounds());
+  const size=map.getSize();
+  if(size.x < 50) return;   // carte cachée (onglet non actif) -> on recadrera au retour
+  const c=CITES[activeCite], h=homeView(c);
+  homeZoom=h.zoom;
+  // emprise de la vue d'accueil (+ zone élargie si la cité en a une)
+  const pc=map.project(h.center,h.zoom), half=size.divideBy(2);
+  const area=L.latLngBounds(map.unproject(pc.subtract(half),h.zoom), map.unproject(pc.add(half),h.zoom));
+  if(c.zone) area.extend(L.latLngBounds(c.zone));
+  if(recenter!==false || !map._loaded || framedCite!==activeCite) map.setView(h.center, h.zoom, {animate:false});
+  map.setMinZoom(c.zone ? map.getBoundsZoom(area) : h.zoom);   // dézoom max = toute la zone
+  map.setMaxBounds(area);
   framedCite = activeCite;
+  updateZoomClass();
 }
+// vue large : pastilles réduites, entrées "+" masquées, pas de création de cage au toucher
+const isFar = () => map.getZoom() < homeZoom - 0.8;
+function updateZoomClass(){ document.getElementById('map').classList.toggle('far', isFar()); }
+function goHome(){ const h=homeView(CITES[activeCite]); map.flyTo(h.center, h.zoom, {duration:.5}); }
 function switchCite(id){
   if(!CITES[id]) return;
   activeCite=id; try{localStorage.setItem('cite',id);}catch(e){}
   const sel=document.getElementById('citeSelect'); if(sel) sel.value=id;
-  if(mapVisible()) frameCite();   // sinon : recadré au retour sur l'onglet Carte
+  if(mapVisible()) frameCite(true);   // sinon : recadré au retour sur l'onglet Carte
   render();
 }
 // remplit le menu déroulant des cités
@@ -344,12 +376,22 @@ function initCiteSelector(){
 }
 try {
   if(typeof L === 'undefined') throw new Error('Leaflet non chargé');
-  map = L.map('map',{ zoomControl:true, zoomSnap:0, maxBoundsViscosity:1.0 });
+  map = L.map('map',{ zoomControl:true, zoomSnap:0, zoomDelta:0.5, maxBoundsViscosity:1.0,
+                       preferCanvas:true });   // contours d'immeubles en canvas, plus léger sur mobile
   setBasemap(currentBase);   // fond de carte (plan épuré / satellite)
-  frameCite();
-  window.addEventListener('resize', frameCite);
-  loadBuildings();
-  map.on('click', e=> openCageModal(e.latlng.lat, e.latlng.lng, 4));  // taper un porche manqué -> cage
+  // bouton ⌂ : revenir sur la cité
+  const Home = L.Control.extend({ options:{position:'topleft'}, onAdd(){
+    const el=L.DomUtil.create('div','leaflet-bar');
+    el.innerHTML='<a href="#" role="button" title="Recentrer sur la cité" style="font-size:16px">⌂</a>';
+    L.DomEvent.on(el,'click',e=>{ L.DomEvent.stop(e); goHome(); });
+    return el;
+  }});
+  map.addControl(new Home());
+  frameCite(true);
+  let rzT; window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT=setTimeout(()=>frameCite(false),150); });
+  map.on('zoomend', updateZoomClass);
+  // taper un porche manqué -> cage (pas en vue large, pour éviter les créations par erreur)
+  map.on('click', e=>{ if(!isFar()) openCageModal(e.latlng.lat, e.latlng.lng, 4); });
 } catch(err){
   document.getElementById('mapWrap').innerHTML =
     '<div class="empty">La carte n\'a pas pu se charger.<br>Utilise l\'onglet Bâtiments pour ajouter/gérer tes bâtiments.<br><br><button class="btn" style="max-width:240px;margin:0 auto" onclick="pendingLatLng=null;openOv(\'ovBuilding\')">+ Ajouter un bâtiment</button></div>';
@@ -382,29 +424,20 @@ function cageConflicts(){
   DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen[k])dup.add(k); seen[k]=true; } });
   return dup;
 }
-function pastilleIcon(text, sq, color){
-  return L.divIcon({className:'', iconSize:[34,34], iconAnchor:[17,17], html:
-    `<div style="width:34px;height:34px;border-radius:50%;background:${color};color:#fff;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      box-shadow:0 1px 4px rgba(0,0,0,.45);border:2px solid #fff;line-height:1">
-      <span style="font-size:14px;font-weight:700;margin-top:1px">${text}</span>
-      <span style="font-size:11px;font-weight:700;margin-top:-2px;letter-spacing:.5px">${sq}</span>
-    </div>`});
+function pastilleIcon(text, sq, cls){
+  return L.divIcon({className:'pin '+cls, iconSize:[34,34], iconAnchor:[17,17],
+    html:`<div class="pin-in"><b>${text}</b><i>${sq}</i></div>`});
 }
-let markerLayer=null, cageLabelById={};
+let cageLabelById={};
 // cages créées (numéro figé) + détections restantes ("+"). Renseigne cageLabelById.
 function buildEntries(){
-  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;   // filet de sécurité (timing)
   ensureCageNumbers();
   const dup=cageConflicts();
   const entries=[];
   DB.buildings.forEach(b=>{ if(b.lat!=null) entries.push({lat:b.lat,lng:b.lng,kind:'cage',b,num:b.num,sq:b.sq,conflict:dup.has(b.sq+'-'+b.num)}); });
-  if(buildingsData) buildingsData.forEach(bd=>{
-    if(polyAreaM2(bd.coords)<DET.minArea) return;
-    detectEntrances(bd.coords).forEach(pt=>{
-      if(isCage(pt)||isDismissed(pt)) return;
-      entries.push({lat:pt[0],lng:pt[1],kind:'cand',levels:bd.levels,sq:squareOf(pt[0],pt[1])});
-    });
+  getCandidates().forEach(c=>{
+    if(isCage(c)||isDismissed(c)) return;
+    entries.push({lat:c.lat,lng:c.lng,kind:'cand',levels:c.levels,sq:c.sq});
   });
   cageLabelById={};
   entries.forEach(e=>{ if(e.kind==='cage') cageLabelById[e.b.id]={num:e.num,sq:e.sq,conflict:e.conflict}; });
@@ -415,21 +448,24 @@ function cageLabel(b){
   const l=cageLabelById[b.id];
   return l ? `Cage ${l.num}${l.conflict?' *':''} — ${SQNAME[l.sq]}` : (b.addr||'Cage');
 }
-// dessine TOUT : cages (numéro figé) + entrées détectées ("+")
+// dessine TOUT : cages (numéro figé, bleu = faite / orange = pas faite) + entrées détectées ("+")
 function drawMarkers(){
   if(!map) return;
-  if(markerLayer) map.removeLayer(markerLayer);
-  markerLayer=L.layerGroup().addTo(map);
+  ensureOutlines();
+  const ms=[];
   buildEntries().forEach(e=>{
-    const done = e.kind==='cage' && cageDone(e.b);
-    const color = done ? '#378ADD' : '#EF9F27';   // bleu = faite, orange = pas faite
-    const text = e.kind==='cage' ? (e.num + (e.conflict?'*':'')) : '+';
-    const m = L.marker([e.lat,e.lng],{icon:pastilleIcon(text,e.sq,color)}).addTo(markerLayer);
-    if(e.kind==='cage'){ m.on('click',()=>openDetail(e.b.id)); }
-    else m.bindPopup('<div style="text-align:center;font:13px sans-serif;min-width:130px">Entrée de cage&nbsp;?'+
-      '<div style="margin-top:8px"><button onclick="createCageAt('+e.lat+','+e.lng+','+(e.levels||4)+')" style="padding:7px 10px;margin:0 3px;border:0;border-radius:7px;background:#378ADD;color:#fff;font-weight:600">Créer</button>'+
-      '<button onclick="dismissCandidate('+e.lat+','+e.lng+')" style="padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7">Retirer</button></div></div>');
+    if(e.kind==='cage'){
+      const m=L.marker([e.lat,e.lng],{icon:pastilleIcon(e.num+(e.conflict?'*':''), e.sq, cageDone(e.b)?'done':'todo')});
+      m.on('click',()=>openDetail(e.b.id)); ms.push(m);
+    } else {
+      ms.push(L.marker([e.lat,e.lng],{icon:pastilleIcon('+', e.sq, 'todo cand')})
+        .bindPopup(`<div class="cpop">Entrée de cage&nbsp;?<div>
+          <button class="ok" onclick="openCageModal(${e.lat},${e.lng},${e.levels})">Créer</button>
+          <button onclick="dismissCandidate(${e.lat},${e.lng})">Retirer</button></div></div>`));
+    }
   });
+  if(markerLayer) map.removeLayer(markerLayer);
+  markerLayer=L.layerGroup(ms).addTo(map);
 }
 // corriger le numéro / square figé d'une cage
 function setCageNum(id,val){
@@ -442,9 +478,8 @@ function setCageSquare(id,sq){
 }
 
 /* ---------- Contours immeubles + détection des cages d'escalier ---------- */
-let outlineLayer=null, candLayer=null, buildingsData=null;
 const DET={apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
-if(!DB.dismissed) DB.dismissed=[];   // entrées auto retirées à la main
+let candidates=null;   // entrées détectées : calculées une seule fois (la géométrie ne bouge pas)
 
 function projM(coords){
   const lat0=coords[0][0]*Math.PI/180, mLat=111320, mLon=111320*Math.cos(lat0);
@@ -452,57 +487,58 @@ function projM(coords){
   if(p.length>1){const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01)p.pop();}
   return {p,mLat,mLon};
 }
-function polyAreaM2(coords){
-  const {p}=projM(coords); let a=0,n=p.length;
+function signedArea(p){
+  let a=0; const n=p.length;
   for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];a+=x1*y2-x2*y1;}
-  return Math.abs(a/2);
+  return a/2;
 }
 // Détecte les entrées (redans) -> [[lat,lon],...]
 function detectEntrances(coords){
-  const {p,mLat,mLon}=projM(coords); const n=p.length; if(n<6)return [];
-  let area=0; for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];area+=x1*y2-x2*y1;}
+  const {p,mLat,mLon}=projM(coords); const n=p.length;
+  if(n<6) return [];
+  const area=signedArea(p); if(Math.abs(area)<DET.minArea) return [];
   const ccw=area>0;
   const len=i=>{const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];return Math.hypot(x2-x1,y2-y1);};
   const turn=i=>{const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n];
     const ax=b[0]-a[0],ay=b[1]-a[1],bx=c[0]-b[0],by=c[1]-b[1];
-    let t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
+    const t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
   const cand=[];
   for(let i=0;i<n;i++){
     const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax)continue;
     if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv)continue;              // deux coins convexes
     if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank)continue;      // côtés = profondeur du porche
     const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
-    let dx=b[0]-a[0],dy=b[1]-a[1]; const dl=Math.hypot(dx,dy); dx/=dl;dy/=dl;
+    const dx=(b[0]-a[0])/eLen, dy=(b[1]-a[1])/eLen;
     const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                // normale extérieure
-    cand.push([mx+nx*1.6, my+ny*1.6]);
+    const e=[mx+nx*1.6, my+ny*1.6];
+    if(!cand.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge)) cand.push(e);
   }
-  const merged=[]; cand.forEach(e=>{ if(!merged.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge))merged.push(e); });
-  return merged.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
+  return cand.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
 }
-function nearM(pt,lat,lng,m){
-  const mLat=111320, mLon=111320*Math.cos(lat*Math.PI/180);
-  return Math.hypot((pt[0]-lat)*mLat,(pt[1]-lng)*mLon)<m;
+function getCandidates(){
+  if(!candidates && buildingsData)
+    candidates=buildingsData.flatMap(bd=>detectEntrances(bd.coords)
+      .map(([lat,lng])=>({lat,lng,levels:bd.levels||4,sq:squareOf(lat,lng)})));
+  return candidates||[];
 }
-const isCage=pt=>DB.buildings.some(b=>b.lat&&nearM(pt,b.lat,b.lng,5));
-const isDismissed=pt=>DB.dismissed.some(d=>nearM(pt,d.lat,d.lng,5));
+function nearM(c,lat,lng,m){
+  const mLon=111320*Math.cos(lat*Math.PI/180);
+  return Math.hypot((c.lat-lat)*111320,(c.lng-lng)*mLon)<m;
+}
+const isCage=c=>DB.buildings.some(b=>b.lat!=null&&nearM(c,b.lat,b.lng,5));
+const isDismissed=c=>DB.dismissed.some(d=>nearM(c,d.lat,d.lng,5));
 
+// données des contours : intégrées (marche en double-clic, sans serveur), sinon fichier json
 async function loadBuildings(){
-  if(!map) return;
-  buildingsData = window.BUILDINGS_DATA || buildingsData;   // intégré (marche en double-clic, sans serveur)
-  if(!buildingsData){ try{ buildingsData=await (await fetch('data/buildings.json')).json(); }catch(e){} }
-  ensureOutlines();
-  drawMarkers();
+  if(!map || buildingsData) return;
+  try{ buildingsData=await (await fetch('data/buildings.json')).json(); candidates=null; drawMarkers(); }catch(e){}
 }
-// dessine les contours une seule fois, dès que les données sont dispo (robuste au timing de chargement)
+// dessine les contours une seule fois
 function ensureOutlines(){
-  if(!map || outlineLayer) return;
-  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;
-  if(!buildingsData) return;
-  outlineLayer=L.layerGroup().addTo(map);
-  buildingsData.forEach(b=>L.polygon(b.coords,{color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}).addTo(outlineLayer));
+  if(!map || outlineLayer || !buildingsData) return;
+  outlineLayer=L.layerGroup(buildingsData.map(b=>L.polygon(b.coords,
+    {color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}))).addTo(map);
 }
-// compat : tout est dessiné par drawMarkers désormais
-function refreshEntrances(){ drawMarkers(); }
 // depuis le menu d'une pastille : ouvrir la création de cage pré-remplie
 let pendingSquare='M';
 function pickSquare(sq){
@@ -532,12 +568,11 @@ function openCageModal(lat,lng,levels){
   document.getElementById('fDoors').value = 2;
   openOv('ovBuilding');
 }
-function createCageAt(lat,lng,levels){ openCageModal(lat,lng,levels); }
 // retirer définitivement une pastille auto erronée
 function dismissCandidate(lat,lng){
   map.closePopup();
   DB.dismissed.push({lat,lng}); save();
-  refreshEntrances();
+  drawMarkers();
 }
 
 /* ---------- Création bâtiment ---------- */
@@ -570,7 +605,7 @@ function goToCage(){
   if(b){ el.value=''; el.blur(); openDetail(b.id); }
   else { el.style.borderColor='#E24B4A'; }   // introuvable
 }
-function floorName(f){ return f===0?'RDC':(f+'e'==='1e'?'1er':f+'e'); }
+const floorName = f => f===0 ? 'RDC' : f===1 ? '1er' : f+'e';
 function renderDetail(){
   const b = curBuilding; if(!b) return;
   if(!cageLabelById[b.id]) buildEntries();
@@ -588,8 +623,7 @@ function renderDetail(){
         <span>N° de cage</span>
         <input type="number" min="1" value="${lbl.num}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
         <span>Square</span>
-        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='M'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','M')">M</button>
-        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='A'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','A')">A</button>
+        ${Object.keys(SQNAME).map(sq=>`<button class="btn ghost" title="${SQNAME[sq]}" style="width:auto;margin:0;padding:8px 14px;${b.sq===sq?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','${sq}')">${sq}</button>`).join('')}
       </div>
       ${lbl.conflict?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
     </div>`;
@@ -651,17 +685,16 @@ function deleteBuilding(id){
 /* ---------- Saisie porte ---------- */
 function openDoor(bid,floor,index){
   const b = DB.buildings.find(x=>x.id===bid);
-  const d = b.doors.find(x=>x.floor===floor && x.index===index);
+  const d = b && b.doors.find(x=>x.floor===floor && x.index===index); if(!d) return;
   curDoor = {b,d};
-  curDoorStatus = d.status;
   document.getElementById('doorTitle').textContent = `${floorName(floor)} · porte ${index+1}`;
   document.getElementById('fNote').value = d.note||'';
   const grid = document.getElementById('statusGrid'); grid.innerHTML='';
   STATUSES.forEach(s=>{
     const btn = document.createElement('button');
     btn.textContent = s.label;
-    btn.style.background = s.key==='todo' ? '#9aa0a6' : s.color;
-    if(s.key===curDoorStatus) btn.classList.add('sel');
+    btn.style.background = s.color;
+    if(s.key===d.status) btn.classList.add('sel');
     btn.onclick = ()=> pickDoorStatus(s.key);   // taper un statut = enregistre + revient à la cage
     grid.appendChild(btn);
   });
@@ -679,8 +712,8 @@ function pickDoorStatus(status){
 function deleteDoor(){
   if(!curDoor) return;
   if(!confirm('Êtes-vous sûr de vouloir supprimer cette porte ?'))return;
-  const b=curDoor.b, d=curDoor.d;
-  b.doors = b.doors.filter(x=>!(x.floor===d.floor && x.index===d.index));
+  const {b,d}=curDoor;
+  b.doors = b.doors.filter(x=>x!==d);
   // ré-indexe les portes restantes de cet étage (0,1,2…)
   b.doors.filter(x=>x.floor===d.floor).sort((a,c)=>a.index-c.index).forEach((x,i)=>x.index=i);
   save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
@@ -710,7 +743,7 @@ function render(){
       </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
     }).join('');
   }
-  ensureOutlines(); drawMarkers(); renderStats(); updateHeader();
+  drawMarkers(); renderStats(); updateHeader();
 }
 function updateHeader(){
   const all = DB.buildings.flatMap(b=>b.doors);
@@ -718,12 +751,13 @@ function updateHeader(){
   document.getElementById('hstat').textContent = DB.buildings.length ? `${done}/${all.length} portes` : '';
 }
 function renderStats(){
-  const all = DB.buildings.flatMap(b=>b.doors);
-  const by = k => all.filter(d=>d.status===k).length;
+  const cnt = {}; let total=0;
+  DB.buildings.forEach(b=>b.doors.forEach(d=>{ cnt[d.status]=(cnt[d.status]||0)+1; total++; }));
+  const by = k => cnt[k]||0;
   const m = document.getElementById('metrics');
   const cards = [
     {n:DB.buildings.length, l:'Bâtiments'},
-    {n:all.length, l:'Portes totales'},
+    {n:total, l:'Portes totales'},
     {n:by('interesse'), l:'Intéressés', c:'#1D9E75'},
     {n:by('refus'), l:'Refus', c:'#E24B4A'},
     {n:by('absent'), l:'Absents', c:'#EF9F27'},
@@ -734,9 +768,9 @@ function renderStats(){
 
 /* ---------- Export CSV ---------- */
 function download(name, text, type){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([text],{type}));
-  a.download=name; a.click();
+  const a=document.createElement('a'), url=URL.createObjectURL(new Blob([text],{type}));
+  a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function exportCSV(){
   const rows = [['Batiment','Secteur','Etage','Porte','Statut','Note','Date','Lat','Lng']];
@@ -792,20 +826,21 @@ function restoreJSON(input){
 }
 
 /* ---------- UI helpers ---------- */
-function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function openOv(id){document.getElementById(id).classList.add('show')}
 function closeOv(id){document.getElementById(id).classList.remove('show')}
 function setTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
-  if(tab==='map' && map) setTimeout(()=>{ if(framedCite!==activeCite) frameCite(); else map.invalidateSize(); },60);
+  if(tab==='map' && map) setTimeout(()=>{ frameCite(framedCite!==activeCite); },60);
 }
 document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>{ setTab(b.dataset.tab); render(); });
 document.querySelectorAll('.overlay').forEach(o=> o.onclick=e=>{ if(e.target===o) o.classList.remove('show'); });
 
 initCiteSelector();
 render();
+loadBuildings();   // secours si data/buildings.js n'a pas chargé
 initFirebase();
 // PWA : installe le service worker (hors-ligne + installation). Ignoré en file:// (normal).
 if('serviceWorker' in navigator){
