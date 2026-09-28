@@ -8,7 +8,8 @@
       "README.md",
       "*.csv",
       "porte-a-porte-sauvegarde-*.json",
-      "sauvegarde-*.json"
+      "sauvegarde-*.json",
+      "design/**"
     ],
     "rewrites": [
       {
