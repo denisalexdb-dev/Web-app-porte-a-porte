@@ -964,7 +964,7 @@ function restoreJSON(input){
 // Alex la guide avec des bulles DANS la page (jamais par-dessus les boutons).
 // Ton : on la tutoie, on ne dit jamais "facile" ou "simple", on ne met jamais l'erreur sur elle,
 // on rappelle que rien ne casse et qu'on peut toujours corriger.
-const G = { ecran:'lieu', lieu:null, lettre:null, num:'', cage:null, floor:0, index:0, prev:null, bulle:[], msg:'' };
+const G = { ecran:'lieu', lieu:null, lettre:null, num:'', cage:null, floor:0, index:0, prev:null, bulle:[], msg:'', sens:1, autres:false };
 let gabToastT=null;
 const gabOn = () => { try{ return localStorage.getItem('modeG')==='1'; }catch(e){ return false; } };
 const gabVu = k => { try{ return localStorage.getItem('gabVu_'+k)==='1'; }catch(e){ return false; } };
@@ -980,6 +980,9 @@ const GAB_TXT = {
     "Tape le numéro dans la case, coche la lettre, puis touche « C'est parti »."
   ],
   numeroP:[ "Le numéro de la cage est écrit à l'entrée du hall. Tape-le dans la case, puis touche « C'est parti »." ],
+  depart:[
+    "Tu commences par où ? Si tu prends l'ascenseur jusqu'en haut pour redescendre à pied, touche « Par le dernier étage ». Sinon, « Par le rez-de-chaussée »."
+  ],
   porte:[
     "Tu es devant une porte. Après avoir sonné, touche ce qui s'est passé : Intéressé, Absent ou Refus. Je passe tout seul à la porte suivante.",
     "Quand tu changes d'étage, touche « On change d'étage » tout en bas. Et quand tu as terminé, « On a fini ». Si tu as touché le mauvais bouton, « Revenir à la porte d'avant » te permet de corriger."
@@ -1020,9 +1023,17 @@ function gabValiderNum(){
   const sq = G.lieu==='ma' ? G.lettre : 'P';
   const b=DB.buildings.find(x=>x.num===n && x.sq===sq);
   if(!b){ G.msg=`Je ne trouve pas la cage ${n}${G.lieu==='ma'?' '+sq:''} dans la liste. Ce n'est pas grave : vérifie le numéro à l'entrée du hall, et si c'est bien celui-là, envoie un petit message à Alex.`; return gabRender(); }
-  G.cage=b.id; G.prev=null;
-  G.floor=gabEtages(b)[0] ?? 0; G.index=0;
-  gabAller('porte');
+  G.cage=b.id; G.prev=null; G.autres=false;
+  gabAller('depart');
+}
+// 2 bis) par où elle commence : en bas (elle monte à pied) ou en haut (ascenseur puis elle descend)
+function gabDepart(ou){
+  const b=DB.buildings.find(x=>x.id===G.cage); if(!b) return;
+  const et=gabEtages(b);
+  if(ou==='bas'){ G.floor=et[0] ?? 0; G.sens=1; }
+  else if(ou==='haut'){ G.floor=et[et.length-1] ?? 0; G.sens=-1; }
+  else { G.floor=ou; }
+  G.index=0; gabAller('porte');
 }
 // 3) la porte devant elle
 const gabEtages = b => [...new Set(b.doors.map(d=>d.floor))].sort((x,y)=>x-y);   // étages qui ont des portes
@@ -1084,6 +1095,15 @@ function gabRender(){
       <div class="g-lettres">${['A','M'].map(x=>`<button type="button" class="g-lettre ${G.lettre===x?'on':''}" aria-pressed="${G.lettre===x}" onclick="gabLettre('${x}')"><span class="g-case">${G.lettre===x?'✓':''}</span>${x}</button>`).join('')}</div>`:''}
       <button type="button" class="g-choix prim" onclick="gabValiderNum()">C'est parti</button>
       <div class="g-liens"><button type="button" class="g-lien petit" onclick="gabAller('lieu')">← Je ne suis pas là</button><button type="button" class="g-lien petit" onclick="gabReexplique()">Réexplique-moi</button></div>`;
+  } else if(G.ecran==='depart'){
+    const et=gabEtages(b);
+    head=`<h2>${cageNom}</h2><p>${et.length} étage${et.length>1?'s':''} avec des logements</p>`;
+    corps=`<div class="g-q">Tu commences par où ?</div>
+      <button type="button" class="g-choix" onclick="gabDepart('bas')">Par le rez-de-chaussée<br><span style="font-size:17px;font-weight:500">je monte au fur et à mesure</span></button>
+      <button type="button" class="g-choix" onclick="gabDepart('haut')">Par le dernier étage<br><span style="font-size:17px;font-weight:500">je prends l'ascenseur, puis je descends</span></button>
+      ${G.autres?`<div style="font-size:19px;font-weight:600">Touche l'étage où tu es :</div><div class="g-lettres" style="flex-wrap:wrap">${et.map(f=>`<button type="button" class="g-lettre" style="flex:1 1 40%;font-size:22px" onclick="gabDepart(${f})">${f===0?'RDC':floorName(f)}</button>`).join('')}</div>`
+        :`<div class="g-liens"><button type="button" class="g-lien" onclick="G.autres=true;gabRender()">Je suis à un autre étage…</button></div>`}
+      <div class="g-liens"><button type="button" class="g-lien petit" onclick="gabAller('numero')">← Ce n'est pas la bonne cage</button><button type="button" class="g-lien petit" onclick="gabReexplique()">Réexplique-moi</button></div>`;
   } else if(G.ecran==='porte'){
     const portes=gabPortes(b,G.floor), d=portes[G.index];
     head=`<h2>${cageNom}</h2><p>${gabEtageNom(G.floor)}</p>`;
@@ -1096,8 +1116,10 @@ function gabRender(){
     const et=gabEtages(b), haut=et.some(f=>f>G.floor), bas=et.some(f=>f<G.floor);
     head=`<h2>${cageNom}</h2><p>Tu es au ${gabEtageNom(G.floor).toLowerCase()}</p>`;
     corps=`<div class="g-q">On monte ? On descend ?</div>
-      ${haut?`<button type="button" class="g-choix prim" onclick="gabBouge(1)">↑ On monte</button>`:`<p style="margin:0;color:var(--muted)">Tu es au dernier étage.</p>`}
-      ${bas?`<button type="button" class="g-choix prim" onclick="gabBouge(-1)">↓ On descend</button>`:`<p style="margin:0;color:var(--muted)">Tu es au rez-de-chaussée.</p>`}
+      ${(()=>{   // le sens choisi au départ passe en premier et en violet
+        const monte = haut?`<button type="button" class="g-choix ${G.sens>0?'prim':''}" onclick="gabBouge(1)">↑ On monte</button>`:`<p style="margin:0;color:var(--muted)">Tu es au dernier étage.</p>`;
+        const desc  = bas?`<button type="button" class="g-choix ${G.sens<0?'prim':''}" onclick="gabBouge(-1)">↓ On descend</button>`:`<p style="margin:0;color:var(--muted)">Tu es au rez-de-chaussée.</p>`;
+        return G.sens<0 ? desc+monte : monte+desc; })()}
       <div class="g-liens">${G.finEtage?'':`<button type="button" class="g-lien" onclick="gabAller('porte')">Non, je reste à cet étage</button>`}<button type="button" class="g-lien" onclick="gabFini()">On a fini…</button>
       ${G.prev?`<button type="button" class="g-lien petit" onclick="gabRetour()">Revenir à la porte d'avant</button>`:''}</div>`;
   } else if(G.ecran==='fini'){
