@@ -132,6 +132,20 @@
   .cpop div{margin-top:10px;display:flex;gap:6px;justify-content:center}
   .cpop button{min-height:40px;padding:0 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font:inherit;color:var(--ink)}
   .cpop button.ok{border:0;background:var(--violet);color:#fff;font-weight:700}
+  /* ===== Tuto : fenêtres d'explication ===== */
+  #helpBtn{width:34px;height:34px;flex-shrink:0;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:rgba(255,255,255,.14);color:#fff;font-family:var(--display);font-weight:900;font-size:18px;line-height:1;cursor:pointer;padding:0}
+  #tuto{position:fixed;inset:0;z-index:1200;display:none}
+  #tuto.show{display:block}
+  .tuto-mask{position:absolute;inset:0}
+  .tuto-spot{position:absolute;border-radius:14px;box-shadow:0 0 0 3px var(--jaune),0 0 0 9999px rgba(30,19,48,.6);transition:all .25s ease;pointer-events:none}
+  .tuto-card{position:absolute;left:12px;right:12px;max-width:496px;margin:0 auto;background:#fff;border-radius:20px;padding:16px 18px 14px;box-shadow:0 10px 30px rgba(30,19,48,.35);transition:top .25s ease}
+  .tuto-card h4{margin:0 0 6px;font-family:var(--display);font-weight:900;font-size:20px;color:var(--violet)}
+  .tuto-card p{margin:0;font-size:15px;line-height:1.45;color:var(--ink)}
+  .tuto-nav{display:flex;align-items:center;gap:8px;margin-top:14px}
+  .tuto-nav .n{font-size:13px;font-weight:700;color:var(--muted);margin-right:auto}
+  .tuto-nav button{min-height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-size:14px;font-weight:700;cursor:pointer}
+  .tuto-nav button.ok{background:var(--violet);border-color:var(--violet);color:#fff}
+  .tuto-nav button.skip{border:0;background:none;color:var(--muted);text-decoration:underline;padding:0 4px}
   /* ===== Mode Gabrielle : écran pour Gabi ===== */
   #gab{position:fixed;inset:0;z-index:900;background:var(--bg);display:none;flex-direction:column;overflow:auto;font-size:19px;color:var(--ink)}
   #gab.show{display:flex}
@@ -172,6 +186,7 @@
   <header>
     <div class="hrow">
       <h1>Porte à porte</h1>
+      <button type="button" id="helpBtn" onclick="tutoPage()" aria-label="Aide : explique cette page">?</button>
       <div id="fbstatus"></div>
     </div>
     <div class="hrow">
@@ -203,13 +218,13 @@
   <div class="view" id="view-stats">
     <div class="metrics" id="metrics"></div>
     <div style="padding:0 14px 20px">
-      <button class="btn" onclick="exportCSV()">Exporter en CSV (Excel)</button>
-      <button class="btn ghost" onclick="backupJSON()">💾 Sauvegarder (fichier)</button>
-      <button class="btn ghost" onclick="document.getElementById('fileLoad').click()">📂 Charger une sauvegarde</button>
+      <button class="btn" id="sExport" onclick="exportCSV()">Exporter en CSV (Excel)</button>
+      <button class="btn ghost" id="sSave" onclick="backupJSON()">💾 Sauvegarder (fichier)</button>
+      <button class="btn ghost" id="sLoad" onclick="document.getElementById('fileLoad').click()">📂 Charger une sauvegarde</button>
       <input type="file" id="fileLoad" accept=".json" style="display:none" onchange="restoreJSON(this)" />
-      <button class="btn ghost" onclick="resetStates()">Réinitialiser les visites</button>
-      <button class="btn" style="margin-top:16px;min-height:60px;font-size:17px;background:var(--rouge)" onclick="gabStart()">Mode Gabrielle — écran simplifié</button>
-      <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn ghost" id="sReset" onclick="resetStates()">Réinitialiser les visites</button>
+      <button class="btn" id="sGab" style="margin-top:16px;min-height:60px;font-size:17px;background:var(--rouge)" onclick="gabStart()">Mode Gabrielle — écran simplifié</button>
+      <div id="sInstall" style="display:flex;gap:8px;margin-top:16px">
         <button class="btn" style="flex:1;margin-top:0" onclick="installAndroid()">Appli Android</button>
         <button class="btn" style="flex:1;margin-top:0" onclick="installApple()">Appli Apple</button>
       </div>
@@ -249,6 +264,14 @@
     <input id="fNote" placeholder="Repasser le soir, code 1234B…" onchange="if(curDoor){curDoor.d.note=this.value.trim();save();}" />
     <p style="font-size:13px;color:var(--muted);margin:8px 0 0">Un tap sur un statut enregistre et revient à la cage.</p>
     <button class="btn danger" style="margin-top:12px" onclick="deleteDoor()">Supprimer cette porte</button>
+  </div>
+</div>
+
+<!-- Tuto : une fenêtre à la fois, l'élément expliqué reste visible -->
+<div id="tuto" role="dialog" aria-modal="true" aria-labelledby="tutoTitre">
+  <div class="tuto-mask"></div><div class="tuto-spot" id="tutoSpot"></div>
+  <div class="tuto-card" id="tutoCard"><h4 id="tutoTitre"></h4><p id="tutoTexte"></p>
+    <div class="tuto-nav"><span class="n" id="tutoN"></span><button type="button" class="skip" onclick="tutoFin()">Passer</button><button type="button" id="tutoPrec" onclick="tutoAller(-1)">Précédent</button><button type="button" class="ok" id="tutoSuiv" onclick="tutoAller(1)">Suivant</button></div>
   </div>
 </div>
 
@@ -959,6 +982,100 @@ function restoreJSON(input){
   input.value='';
 }
 
+/* ---------- Tuto de la version normale ---------- */
+// 1re ouverture : bienvenue + visite de la carte. Ensuite le bouton « ? » explique UNIQUEMENT la page affichée.
+// Chaque étape : un élément mis en lumière (sel) + une fenêtre placée au-dessus ou en dessous pour ne pas le cacher.
+const TUTO_BIENVENUE = [
+  {t:"Bienvenue !", x:"Cette appli sert à suivre le porte-à-porte : les cages d'escalier, les portes et ce qui s'est passé à chacune. Tout ce que tu notes est partagé en direct avec l'équipe."},
+  {sel:'.tabs', t:"Les trois pages", x:"En bas : la Carte pour se repérer et créer les cages, Cages pour la liste, et Bilan pour les chiffres, les exports et les réglages."},
+  {sel:'#fbstatus', t:"La synchro", x:"« Synchronisé » : tes saisies partent bien à l'équipe. « Hors ligne » : elles sont gardées sur le téléphone et partiront au retour du réseau."},
+  {sel:'#helpBtn', t:"Besoin d'aide ?", x:"Ce bouton « ? » explique la page où tu te trouves, à tout moment. Je te montre la carte pour commencer."}
+];
+const TUTO_PAGES = {
+  'view-map':[
+    {sel:'#citeSelect', t:"Choisir la cité", x:"Moulineaux / Avre ou Place Haute : la carte se cadre sur la cité choisie."},
+    {sel:'#map', t:"Les pastilles", x:"Violet : cage finie. Blanc cerclé : cage à faire. Jaune en pointillé : entrée repérée automatiquement. Touche une cage pour l'ouvrir, ou un « + » pour la créer ou le retirer."},
+    {sel:'#map', t:"Ajouter une cage", x:"Touche un porche sur la carte, là où il n'y a pas de pastille : une fenêtre s'ouvre pour indiquer le square, le numéro, les étages et les portes par palier."},
+    {sel:'.leaflet-control-zoom', t:"Zoom", x:"+ et − pour zoomer. Si deux pastilles se touchent, la carte zoome d'abord pour que tu ouvres la bonne."},
+    {sel:'.leaflet-bar:not(.leaflet-control-zoom)', t:"Recentrer", x:"Le bouton ⌂ te ramène sur la cité si tu t'es éloigné."},
+    {sel:'#baseBtn', t:"Plan ou satellite", x:"Bascule entre le plan et la vue satellite, pratique pour repérer les porches."},
+    {sel:'#search', t:"Aller à une cage", x:"Tape un numéro et sa lettre (3M, 5A, 2P) puis Entrée : la cage s'ouvre directement."},
+    {sel:'.hbar', t:"Progression", x:"La barre jaune et le compteur à droite montrent les portes faites sur le total."}
+  ],
+  'view-list':[
+    {sel:'.citehead', t:"Changer de cité", x:"Touche une cité pour voir ses cages."},
+    {sel:'#blist .bcard', t:"Une cage", x:"Le badge donne le numéro et le square (il devient violet quand la cage est finie). La barre verte montre les portes faites. Touche la carte pour ouvrir la cage."}
+  ],
+  'view-stats':[
+    {sel:'#metrics', t:"Les chiffres", x:"Cages, portes, intéressés, refus, absents et portes restantes, pour toute l'équipe."},
+    {sel:'#sExport', t:"Exporter", x:"Crée un fichier à ouvrir dans Excel, une ligne par porte."},
+    {sel:'#sSave', t:"Sauvegarder", x:"Enregistre toutes les données dans un fichier sur le téléphone, par précaution."},
+    {sel:'#sLoad', t:"Charger une sauvegarde", x:"Remet les données d'un fichier de sauvegarde. Attention : ça remplace ce qui est affiché."},
+    {sel:'#sReset', t:"Réinitialiser les visites", x:"Remet toutes les portes à « À faire » pour une nouvelle campagne. Les cages, étages et notes sont gardés."},
+    {sel:'#sGab', t:"Mode Gabrielle", x:"Un écran plus guidé : on choisit la cage, puis une porte à la fois avec trois gros boutons."},
+    {sel:'#sInstall', t:"Installer l'appli", x:"Ajoute l'appli sur l'écran d'accueil du téléphone, comme une vraie application."}
+  ],
+  'view-detail':[
+    {sel:'#detail .bcard', t:"La cage", x:"Numéro, square, nombre d'étages et de portes, et la progression."},
+    {sel:'#detail .bcard:nth-of-type(2)', t:"Corriger le numéro", x:"Si le numéro ou le square est faux, change-le ici. Un astérisque signale un numéro en double."},
+    {sel:'#detail .door', t:"Les portes", x:"Touche une porte pour noter ce qui s'est passé et ajouter une note. Le petit point signale une porte qui a une note."},
+    {sel:'#detail .lab.tap', t:"Étage sans logement", x:"Touche le nom d'un étage (RDC, 1er…) s'il n'a pas de logement, par exemple un rez-de-chaussée avec des commerces. Touche-le à nouveau pour annuler."},
+    {sel:'#detail .addoor', t:"Ajouter une porte", x:"Le « + » à gauche d'un étage ajoute une porte à cet étage. Le « × » à droite supprime l'étage."},
+    {sel:'#cageNote', t:"Notes de la cage", x:"Digicode, remarques, horaires pour repasser : c'est partagé avec toute l'équipe."}
+  ]
+};
+let tutoEtapes=[], tutoI=0, tutoApres=null;
+function tutoLancer(etapes, apres){
+  tutoEtapes=etapes.filter(e=>!e.sel || document.querySelector(e.sel)); tutoI=0; tutoApres=apres||null;
+  if(!tutoEtapes.length) return;
+  document.getElementById('tuto').classList.add('show'); tutoMontrer();
+}
+function tutoPage(){
+  const v=(document.querySelector('.view.active')||{}).id;
+  tutoLancer(TUTO_PAGES[v]||[]);   // uniquement la page affichée
+}
+function tutoAller(d){
+  tutoI+=d;
+  if(tutoI>=tutoEtapes.length) return tutoFin(true);
+  if(tutoI<0) tutoI=0;
+  tutoMontrer();
+}
+function tutoFin(complet){
+  document.getElementById('tuto').classList.remove('show');
+  try{ localStorage.setItem('tutoVu','1'); }catch(e){}
+  const suite=tutoApres; tutoApres=null;
+  if(complet===true && suite) suite();
+}
+function tutoMontrer(){
+  const e=tutoEtapes[tutoI], spot=document.getElementById('tutoSpot'), card=document.getElementById('tutoCard');
+  document.getElementById('tutoTitre').textContent=e.t;
+  document.getElementById('tutoTexte').textContent=e.x;
+  document.getElementById('tutoN').textContent=(tutoI+1)+' / '+tutoEtapes.length;
+  document.getElementById('tutoPrec').style.display = tutoI ? '' : 'none';
+  document.getElementById('tutoSuiv').textContent = tutoI===tutoEtapes.length-1 ? (tutoApres?'Continuer':'Terminé') : 'Suivant';
+  const el=e.sel && document.querySelector(e.sel);
+  const H=window.innerHeight;
+  if(!el){   // fenêtre centrée, sans élément mis en lumière
+    Object.assign(spot.style,{left:'50%',top:'50%',width:'0px',height:'0px'});
+    card.style.top=Math.max(16,(H-card.offsetHeight)/2)+'px'; return;
+  }
+  el.scrollIntoView({block:'nearest'});
+  const r=el.getBoundingClientRect(), pad=6;
+  const top=Math.max(4,r.top-pad), bot=Math.min(H-4,r.bottom+pad);
+  Object.assign(spot.style,{left:Math.max(4,r.left-pad)+'px',top:top+'px',width:(Math.min(window.innerWidth-4,r.right+pad)-Math.max(4,r.left-pad))+'px',height:(bot-top)+'px'});
+  // la fenêtre va du côté où il y a le plus de place, sans recouvrir l'élément
+  const ch=card.offsetHeight;
+  let y = (H-bot >= top) ? bot+12 : top-ch-12;
+  if(bot-top > H*0.55) y = (H-bot >= top) ? H-ch-16 : 16;   // grand élément (la carte) : fenêtre sur le bord
+  card.style.top=Math.max(12,Math.min(H-ch-12,y))+'px';
+}
+window.addEventListener('resize',()=>{ if(document.getElementById('tuto').classList.contains('show')) tutoMontrer(); });
+function tutoPremiereFois(){
+  let vu=false; try{ vu=localStorage.getItem('tutoVu')==='1'; }catch(e){}
+  if(vu || gabOn()) return;
+  setTimeout(()=>tutoLancer(TUTO_BIENVENUE, ()=>{ setTab('map'); setTimeout(()=>tutoLancer(TUTO_PAGES['view-map']),150); }), 600);
+}
+
 /* ---------- Mode Gabrielle : l'écran de Gabi ---------- */
 // Parcours : "Tu es…" (lieu) -> numéro de cage (+ A/M) -> la porte devant elle : Intéressé / Absent / Refus.
 // Alex la guide avec des bulles DANS la page (jamais par-dessus les boutons).
@@ -1184,6 +1301,7 @@ if(gabOn()){ gabBulle(); document.getElementById('gab').classList.add('show'); }
 render();
 loadBuildings();   // secours si data/buildings.js n'a pas chargé
 initFirebase();
+tutoPremiereFois();   // 1re ouverture : fenêtres de bienvenue
 // PWA : installe le service worker (hors-ligne + installation). Ignoré en file:// (normal).
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
