@@ -1,4 +1,4 @@
-const CACHE = 'pap-v6';
+const CACHE = 'pap-v7';
 const ASSETS = [
   '/', '/porte-a-porte.html',
   '/lib/leaflet.js', '/lib/leaflet.css',
