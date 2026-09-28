@@ -132,6 +132,40 @@
   .cpop div{margin-top:10px;display:flex;gap:6px;justify-content:center}
   .cpop button{min-height:40px;padding:0 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font:inherit;color:var(--ink)}
   .cpop button.ok{border:0;background:var(--violet);color:#fff;font-weight:700}
+  /* ===== Mode Gabrielle : écran ultra simplifié ===== */
+  #gab{position:fixed;inset:0;z-index:900;background:var(--bg);display:none;flex-direction:column;overflow:auto;font-size:18px}
+  #gab.show{display:flex}
+  .g-head{background:var(--violet);color:#fff;padding:18px 20px 20px;padding-top:max(18px,env(safe-area-inset-top))}
+  .g-head h2{font-family:var(--display);font-weight:900;font-size:30px;margin:0;line-height:1.1}
+  .g-head p{margin:8px 0 0;font-size:18px;line-height:1.35}
+  .g-sync{font-size:14px;font-weight:600;opacity:.9;margin-top:10px}
+  .g-body{padding:18px 16px 24px;display:flex;flex-direction:column;gap:14px;flex:1}
+  .g-cites{display:flex;gap:10px}
+  .g-cites button{flex:1;min-height:56px;border-radius:16px;border:2px solid var(--line);background:#fff;font-size:17px;font-weight:700;color:var(--ink)}
+  .g-cites button.sel{background:var(--violet);border-color:var(--violet);color:#fff}
+  .g-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .g-cage{min-height:110px;border-radius:20px;border:2px solid var(--line);background:#fff;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;cursor:pointer}
+  .g-cage b{font-family:var(--display);font-weight:900;font-size:36px;line-height:1;color:var(--violet)}
+  .g-cage span{font-size:16px;font-weight:600}
+  .g-cage.fini{background:var(--violet-soft);border-color:var(--violet-soft)}
+  .g-cage.fini span{color:var(--vert);font-weight:800}
+  .g-big{min-height:64px;border-radius:18px;border:2px solid var(--line);background:#fff;color:var(--ink);font-size:19px;font-weight:700;width:100%;cursor:pointer}
+  .g-big.prim{background:var(--violet);border-color:var(--violet);color:#fff}
+  .g-door{background:#fff;border:2px solid var(--line);border-radius:22px;padding:18px;text-align:center}
+  .g-door .g-et{font-size:20px;font-weight:700;color:var(--muted)}
+  .g-door .g-po{font-family:var(--display);font-weight:900;font-size:52px;line-height:1.05;color:var(--violet)}
+  .g-door .g-av{font-size:17px;font-weight:600;margin-top:6px}
+  .g-q{font-size:22px;font-weight:800;margin:4px 0 -2px}
+  .g-st{min-height:84px;border-radius:20px;border:0;color:#fff;display:flex;align-items:center;gap:14px;padding:12px 16px;text-align:left;cursor:pointer;width:100%}
+  .g-st svg{width:36px;height:36px;flex-shrink:0}
+  .g-st b{display:block;font-size:24px;font-weight:800}
+  .g-st small{display:block;font-size:16px;font-weight:500;opacity:.95;margin-top:2px}
+  .g-row{display:flex;gap:10px}
+  .g-row .g-big{flex:1;font-size:17px}
+  .g-quit{margin-top:auto;background:none;border:0;color:var(--muted);font-size:16px;text-decoration:underline;padding:14px;min-height:48px}
+  .g-toast{position:fixed;left:16px;right:16px;top:max(16px,env(safe-area-inset-top));pointer-events:none;z-index:950;background:var(--ink);color:#fff;font-size:19px;font-weight:700;border-radius:16px;padding:16px 18px;text-align:center;display:none}
+  .g-toast.show{display:block;animation:up .2s ease}
+  .g-fin{font-family:var(--display);font-weight:900;font-size:34px;color:var(--vert);text-align:center;margin:20px 0 4px}
 </style>
 </head>
 <body>
@@ -175,6 +209,7 @@
       <button class="btn ghost" onclick="document.getElementById('fileLoad').click()">📂 Charger une sauvegarde</button>
       <input type="file" id="fileLoad" accept=".json" style="display:none" onchange="restoreJSON(this)" />
       <button class="btn ghost" onclick="resetStates()">Réinitialiser les visites</button>
+      <button class="btn" style="margin-top:16px;min-height:60px;font-size:17px;background:var(--rouge)" onclick="gabStart()">Mode Gabrielle — écran simplifié</button>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn" style="flex:1;margin-top:0" onclick="installAndroid()">Appli Android</button>
         <button class="btn" style="flex:1;margin-top:0" onclick="installApple()">Appli Apple</button>
@@ -217,6 +252,10 @@
     <button class="btn danger" style="margin-top:12px" onclick="deleteDoor()">Supprimer cette porte</button>
   </div>
 </div>
+
+<!-- Mode Gabrielle : écran ultra simplifié (plein écran) -->
+<div id="gab"></div>
+<div class="g-toast" id="gabToast" role="status" aria-live="polite"></div>
 
 <script src="lib/leaflet.js"></script>
 <script src="data/buildings.js"></script>
@@ -315,6 +354,7 @@ function setSync(state){
   const map={ 'sync':['● Synchronisé','#8CF0B4'], 'connexion…':['● Connexion…','#F9C900'],
               'local':['● Local','rgba(255,255,255,.75)'], 'erreur':['⚠ Hors ligne','#FFB4AE'] };
   const [txt,col]=map[state]||map.local; el.textContent=txt; el.style.color=col;
+  if(typeof gabRender==='function') gabRender();
 }
 
 function save(){
@@ -837,6 +877,7 @@ function render(){
     }).join('');
   }
   drawMarkers(); renderStats(); updateHeader();
+  gabRender();   // mode Gabrielle : suit aussi les mises à jour des équipiers
 }
 function updateHeader(){
   const all = DB.buildings.flatMap(b=>b.doors);
@@ -919,6 +960,112 @@ function restoreJSON(input){
   input.value='';
 }
 
+/* ---------- Mode Gabrielle : écran ultra simplifié ---------- */
+// Un seul chemin : choisir sa cage -> l'appli propose la porte suivante -> un gros bouton par réponse.
+// Reste actif sur ce téléphone (localStorage) jusqu'à ce qu'on le quitte. Les données sont les mêmes (synchro Firestore).
+const GAB_ST = [
+  {key:'interesse', t:'Intéressé',  d:"La personne est intéressée"},
+  {key:'visite',    t:'Visité',     d:"On a parlé, sans plus"},
+  {key:'absent',    t:'Absent',     d:"Personne n'a ouvert"},
+  {key:'refus',     t:'Refus',      d:"La personne ne veut pas"},
+];
+let gabCage=null, gabSkip=new Set(), gabLast=null, gabFocus=null, gabToastT=null;
+const gabOn = () => { try{ return localStorage.getItem('modeG')==='1'; }catch(e){ return false; } };
+function gabStart(){
+  try{ localStorage.setItem('modeG','1'); }catch(e){}
+  gabCage=null; gabSkip=new Set(); gabLast=null; gabFocus=null;
+  document.getElementById('gab').classList.add('show'); gabRender();
+}
+function gabQuit(){
+  if(!confirm('Quitter le mode simplifié et revenir à l\'appli complète ?')) return;
+  try{ localStorage.removeItem('modeG'); }catch(e){}
+  document.getElementById('gab').classList.remove('show');
+  render();
+}
+const gabKey = d => d.floor+'-'+d.index;
+// portes dans l'ordre de passage : RDC d'abord, puis on monte
+const gabOrder = b => b.doors.slice().sort((x,y)=>x.floor-y.floor || x.index-y.index);
+function gabNext(b){
+  const todo=gabOrder(b).filter(d=>d.status==='todo');
+  if(gabFocus){ const f=todo.find(d=>gabKey(d)===gabFocus); if(f) return f; }
+  return todo.find(d=>!gabSkip.has(gabKey(d))) || todo[0] || null;   // portes passées : on y revient à la fin
+}
+function gabPickCage(id){ gabCage=id; gabSkip=new Set(); gabLast=null; gabFocus=null; gabRender(); window.scrollTo(0,0); }
+function gabBack(){ gabCage=null; gabRender(); }
+function gabCite(id){ switchCite(id); gabRender(); }
+function gabSet(status){
+  const b=DB.buildings.find(x=>x.id===gabCage); if(!b) return;
+  const d=gabNext(b); if(!d) return;
+  gabLast={floor:d.floor,index:d.index,status:d.status,date:d.date};
+  d.status=status; d.date=new Date().toISOString().slice(0,10);
+  gabFocus=null; gabSkip.delete(gabKey(d));
+  save(); gabToast(`✓ ${floorName(d.floor)}, porte ${d.index+1} : ${labelOf(status)}`);
+  render();
+}
+function gabPass(){
+  const b=DB.buildings.find(x=>x.id===gabCage); if(!b) return;
+  const d=gabNext(b); if(!d) return;
+  gabSkip.add(gabKey(d)); gabFocus=null;
+  const todo=b.doors.filter(x=>x.status==='todo');
+  if(todo.every(x=>gabSkip.has(gabKey(x)))) gabSkip=new Set([gabKey(d)]);   // tout passé : on repart du début
+  gabRender();
+}
+function gabUndo(){
+  const b=DB.buildings.find(x=>x.id===gabCage); if(!b||!gabLast) return;
+  const d=b.doors.find(x=>x.floor===gabLast.floor&&x.index===gabLast.index);
+  if(d){ d.status=gabLast.status; d.date=gabLast.date; gabFocus=gabKey(d); save(); gabToast(`↩ ${floorName(d.floor)}, porte ${d.index+1} : annulé`); }
+  gabLast=null; render();
+}
+function gabToast(txt){
+  const t=document.getElementById('gabToast'); t.textContent=txt; t.classList.add('show');
+  clearTimeout(gabToastT); gabToastT=setTimeout(()=>t.classList.remove('show'),2200);
+}
+const GAB_ICON = {
+  interesse:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  visite:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  absent:'<path d="M5 21V4h9v17M3 21h13M11 12h.01M17 8l4 4M21 8l-4 4"/>',
+  refus:'<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>'
+};
+function gabRender(){
+  const root=document.getElementById('gab'); if(!root || !root.classList.contains('show')) return;
+  const sync=(document.getElementById('fbstatus')||{}).textContent||'';
+  const b=gabCage && DB.buildings.find(x=>x.id===gabCage);
+  let h='';
+  if(!b){
+    // 1) choisir sa cage
+    gabCage=null;
+    const squares=CITES[activeCite].squares;
+    const cages=DB.buildings.filter(x=>squares.includes(x.sq)).sort((x,y)=>(x.sq>y.sq?1:x.sq<y.sq?-1:0)||(x.num-y.num));
+    h+=`<div class="g-head"><h2>Bonjour Gabrielle</h2><p>Touche la cage où tu es.</p><div class="g-sync">${esc(sync)}</div></div><div class="g-body">`;
+    h+=`<div class="g-cites">${Object.keys(CITES).map(id=>`<button type="button" class="${id===activeCite?'sel':''}" onclick="gabCite('${id}')">${CITES[id].name}</button>`).join('')}</div>`;
+    if(!cages.length) h+=`<p style="font-size:19px;text-align:center;color:var(--muted);margin:30px 0">Aucune cage ici pour l'instant.</p>`;
+    h+=`<div class="g-grid">${cages.map(c=>{
+      const reste=c.doors.filter(d=>d.status==='todo').length;
+      const fini=c.doors.length>0&&reste===0;
+      return `<button type="button" class="g-cage ${fini?'fini':''}" onclick="gabPickCage('${c.id}')"><b>${c.num} ${c.sq}</b><span>${fini?'Finie ✓':reste+(reste>1?' portes à faire':' porte à faire')}</span></button>`;
+    }).join('')}</div>`;
+  } else {
+    // 2) la porte suivante
+    const d=gabNext(b), total=b.doors.length, faites=b.doors.filter(x=>x.status!=='todo').length;
+    h+=`<div class="g-head"><h2>Cage ${b.num} ${esc(SQNAME[b.sq]||'')}</h2><p>${faites} porte${faites>1?'s':''} faite${faites>1?'s':''} sur ${total}</p><div class="g-sync">${esc(sync)}</div></div><div class="g-body">`;
+    h+=`<button type="button" class="g-big" onclick="gabBack()">← Changer de cage</button>`;
+    if(!d){
+      h+=`<div class="g-fin">Cage finie, bravo !</div><p style="text-align:center;font-size:19px;margin:0">Toutes les portes sont faites.</p>`;
+      h+=`<button type="button" class="g-big prim" onclick="gabBack()">Choisir une autre cage</button>`;
+    } else {
+      h+=`<div class="g-door"><div class="g-et">${d.floor===0?'Rez-de-chaussée':floorName(d.floor)+' étage'}</div><div class="g-po">Porte ${d.index+1}</div>${d.note?`<div class="g-av">Note : ${esc(d.note)}</div>`:''}</div>`;
+      h+=`<div class="g-q">Qu'est-ce qui s'est passé ?</div>`;
+      GAB_ST.forEach(s=>{
+        h+=`<button type="button" class="g-st" style="background:${colorOf(s.key)}" onclick="gabSet('${s.key}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GAB_ICON[s.key]}</svg><span><b>${s.t}</b><small>${s.d}</small></span></button>`;
+      });
+      h+=`<div class="g-row"><button type="button" class="g-big" onclick="gabPass()">Passer cette porte</button></div>`;
+    }
+    if(gabLast) h+=`<button type="button" class="g-big" onclick="gabUndo()">↩ Annuler la dernière porte</button>`;
+  }
+  h+=`<button type="button" class="g-quit" onclick="gabQuit()">Quitter le mode simplifié</button></div>`;
+  root.innerHTML=h;
+}
+
 /* ---------- UI helpers ---------- */
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function openOv(id){document.getElementById(id).classList.add('show')}
@@ -933,6 +1080,7 @@ document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>{ setTab(b.d
 document.querySelectorAll('.overlay').forEach(o=> o.onclick=e=>{ if(e.target===o) o.classList.remove('show'); });
 
 initCiteSelector();
+if(gabOn()) document.getElementById('gab').classList.add('show');   // Gabrielle retrouve directement son écran
 render();
 loadBuildings();   // secours si data/buildings.js n'a pas chargé
 initFirebase();
