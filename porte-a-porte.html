@@ -75,6 +75,18 @@
   .metric .n{font-size:26px;font-weight:600}
   .metric .l{font-size:12px;color:var(--muted);margin-top:2px}
   .metric .n small{font-size:14px;color:var(--muted);font-weight:400}
+  /* pastilles de la carte */
+  .pin-in{width:34px;height:34px;border-radius:50%;background:#EF9F27;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:transform .15s}
+  .pin.done .pin-in{background:#378ADD}
+  .pin-in b{font-size:14px;margin-top:1px}
+  .pin-in i{font-size:11px;font-weight:700;font-style:normal;margin-top:-2px;letter-spacing:.5px}
+  .far .pin-in{transform:scale(.55)}
+  .far .pin.cand{display:none}
+  .cpop{text-align:center;font:13px sans-serif;min-width:130px}
+  .cpop div{margin-top:8px}
+  .cpop button{padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7;font:inherit}
+  .cpop button.ok{border:0;background:#378ADD;color:#fff;font-weight:600}
 </style>
 </head>
 <body>
@@ -162,212 +174,221 @@ const STATUSES = [
   {key:'absent',    label:'Absent',    color:'#EF9F27'},
   {key:'refus',     label:'Refus',     color:'#E24B4A'},
 ];
-const colorOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).color;
-const labelOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).label;
+const STATUS_BY = Object.fromEntries(STATUSES.map(s=>[s.key,s]));
+const colorOf = k => (STATUS_BY[k]||STATUSES[0]).color;
+const labelOf = k => (STATUS_BY[k]||STATUSES[0]).label;
 
-let DB = JSON.parse(localStorage.getItem('pap')||'null') || {buildings:[]};
+let DB;
+try { DB = JSON.parse(localStorage.getItem('pap')||'null'); } catch(e){ DB = null; }
+if(!DB || !Array.isArray(DB.buildings)) DB = {buildings:[]};
+if(!DB.dismissed) DB.dismissed = [];   // entrées auto retirées à la main
 function save(){ localStorage.setItem('pap', JSON.stringify(DB)); }
+const findB = id => DB.buildings.find(b=>b.id===id);
 
-let pendingLatLng = null;   // position du bâtiment en cours de création
-let curBuilding = null;     // bâtiment ouvert dans le détail
-let curDoor = null;         // {building, floor, index}
-let curDoorStatus = 'todo';
+let pendingLatLng = null;   // position de la cage en cours de création
+let pendingSquare = 'M';
+let curBuilding = null;     // cage ouverte dans le détail
+let curDoor = null;         // {b, d}
 
 /* ---------- Carte ---------- */
-let map = null, markers = [];
-// Cadrage par 2 intersections : chacune posée sur un bord latéral
+// Vue d'accueil : cadrage par 2 intersections, chacune posée sur un bord latéral
 const EDGE_L = [48.8283903, 2.2505021]; // bord gauche : Rue de Seine × Avenue Pierre Grenier
 const EDGE_R = [48.8281580, 2.2536653]; // bord droit  : Quai du Point du Jour × Rue Émile Duclaux
+// Zone de déplacement autorisée : la cité + le rond-point du Pont de Sèvres (à l'ouest), avec un peu de marge
+const ZONE = [[48.8255, 2.2265], [48.8315, 2.2545]];
+let map = null, homeZoom = 0, markerLayer = null, outlineLayer = null;
+
+// zoom qui fait tenir pile EDGE_L -> EDGE_R dans la largeur de l'écran
+function homeView(){
+  const crs = map.options.crs;
+  const dx = crs.latLngToPoint(L.latLng(EDGE_R),0).x - crs.latLngToPoint(L.latLng(EDGE_L),0).x;
+  return { center:[(EDGE_L[0]+EDGE_R[0])/2, (EDGE_L[1]+EDGE_R[1])/2], zoom:Math.log2(map.getSize().x/dx) };
+}
+// recalcule les limites (zoom mini + zone bloquée) ; recentre seulement si demandé
+function frameMap(recenter){
+  map.invalidateSize();
+  const size = map.getSize(); if(!size.x || !size.y) return;   // onglet carte masqué
+  const h = homeView(); homeZoom = h.zoom;
+  // emprise de la vue d'accueil, pour qu'elle reste toujours atteignable en entier
+  const c = map.project(h.center, h.zoom), half = size.divideBy(2);
+  const area = L.latLngBounds(ZONE)
+    .extend(map.unproject(c.subtract(half), h.zoom))
+    .extend(map.unproject(c.add(half), h.zoom));
+  map.setMaxBounds(null); map.setMinZoom(0);
+  if(recenter || !map._loaded) map.setView(h.center, h.zoom, {animate:false});
+  map.setMinZoom(map.getBoundsZoom(area));   // dézoom max = toute la zone visible
+  map.setMaxBounds(area);                    // verrouille le déplacement sur la zone
+  updateZoomClass();
+}
+// vue large : pastilles réduites, entrées "+" masquées
+function updateZoomClass(){
+  document.getElementById('map').classList.toggle('far', map.getZoom() < homeZoom - 0.8);
+}
+function goHome(){ const h = homeView(); map.flyTo(h.center, h.zoom, {duration:.5}); }
+
 try {
   if(typeof L === 'undefined') throw new Error('Leaflet non chargé');
   map = L.map('map',{
     zoomControl:true,
     zoomSnap:0,               // zoom fractionnaire -> cadrage exact au pixel
-    maxBoundsViscosity:1.0    // bord "dur" : la carte reste sur la zone
+    zoomDelta:0.5,
+    maxBoundsViscosity:1.0,   // bord "dur" : la carte reste sur la zone
+    preferCanvas:true         // contours d'immeubles en canvas, plus léger que le SVG
   });
   // Fond épuré sans pictos de commerces (rues + noms + bâtiments)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:22, maxNativeZoom:20, subdomains:'abcd',
+    maxZoom:22, maxNativeZoom:20, subdomains:'abcd', keepBuffer:4,
     attribution:'© OpenStreetMap © CARTO'
   }).addTo(map);
-  function frameEdges(){
-    map.setMaxBounds(null); map.setMinZoom(0);   // libère avant de recalculer
-    map.invalidateSize();
-    var W = map.getSize().x, crs = map.options.crs;
-    var xl = crs.latLngToPoint(L.latLng(EDGE_L), 0).x;
-    var xr = crs.latLngToPoint(L.latLng(EDGE_R), 0).x;
-    var z = Math.log2(W / (xr - xl));            // largeur écran = écart entre les 2 intersections
-    var center = [(EDGE_L[0]+EDGE_R[0])/2, (EDGE_L[1]+EDGE_R[1])/2];
-    map.setView(center, z, {animate:false});
-    map.setMinZoom(z);                            // interdit de dézoomer plus loin
-    map.setMaxBounds(map.getBounds());            // verrouille le déplacement
-  }
-  frameEdges();
-  window.addEventListener('resize', frameEdges);
-  loadBuildings();
-  map.on('click', e=> openCageModal(e.latlng.lat, e.latlng.lng, 4));  // taper un porche manqué -> cage
+  // bouton ⌂ : revenir sur la cité
+  const Home = L.Control.extend({ options:{position:'topleft'}, onAdd(){
+    const el = L.DomUtil.create('div','leaflet-bar');
+    el.innerHTML = '<a href="#" role="button" title="Recentrer sur la cité" style="font-size:16px">⌂</a>';
+    L.DomEvent.on(el,'click',e=>{ L.DomEvent.stop(e); goHome(); });
+    return el;
+  }});
+  map.addControl(new Home());
+  frameMap(true);
+  // resize (rotation, clavier mobile…) : on ajuste les limites sans faire sauter la vue
+  let rzT; window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT = setTimeout(()=>frameMap(false), 150); });
+  map.on('zoomend', updateZoomClass);
+  // taper un porche manqué -> cage (seulement sur la cité, pas en vue large)
+  map.on('click', e=>{ if(map.getZoom() >= homeZoom - 0.8) openCageModal(e.latlng.lat, e.latlng.lng, 4); });
+  document.getElementById('hint').textContent = 'Touchez un porche pour ajouter une cage';
+  setTimeout(()=>document.getElementById('hint').style.display='none', 6000);
 } catch(err){
+  map = null;
   document.getElementById('mapWrap').innerHTML =
     '<div class="empty">La carte n\'a pas pu se charger.<br>Utilise l\'onglet Bâtiments pour ajouter/gérer tes bâtiments.<br><br><button class="btn" style="max-width:240px;margin:0 auto" onclick="pendingLatLng=null;openOv(\'ovBuilding\')">+ Ajouter un bâtiment</button></div>';
 }
+
+/* ---------- Cages : numéro figé par square ---------- */
 // M = Square des Moulineaux (nord), A = Square de l'Avre (sud)
 const squareOf = lat => lat>48.8283 ? 'M' : 'A';
+const SQNAME = {M:'Moulineaux', A:'Avre'};
 // une cage est "faite" quand toutes ses portes ont été traitées
 const cageDone = b => b.doors.length>0 && b.doors.every(d=>d.status!=='todo');
-const SQNAME={M:'Moulineaux', A:'Avre'};
+const doneCount = b => b.doors.reduce((n,d)=>n+(d.status!=='todo'),0);
 // plus petit numéro libre dans un square
 function nextCageNum(sq){
-  const used=new Set(DB.buildings.filter(b=>b.sq===sq&&b.num).map(b=>b.num));
-  let n=1; while(used.has(n))n++; return n;
+  const used = new Set(DB.buildings.filter(b=>b.sq===sq&&b.num).map(b=>b.num));
+  let n=1; while(used.has(n)) n++; return n;
 }
 // attribue UNE FOIS un numéro figé aux cages qui n'en ont pas encore (migration + sécurité)
 function ensureCageNumbers(){
   let changed=false; const g={M:[],A:[]};
-  DB.buildings.forEach(b=>{ if(!b.sq){b.sq=squareOf(b.lat);changed=true;} g[b.sq].push(b); });
+  DB.buildings.forEach(b=>{ if(!b.sq){ b.sq=squareOf(b.lat); changed=true; } g[b.sq].push(b); });
   ['M','A'].forEach(sq=>{
-    const used=new Set(g[sq].filter(b=>b.num).map(b=>b.num));
+    const used = new Set(g[sq].filter(b=>b.num).map(b=>b.num));
     g[sq].filter(b=>!b.num).sort((a,b)=> b.lat-a.lat || a.lng-b.lng).forEach(b=>{
-      let n=1; while(used.has(n))n++; b.num=n; used.add(n); changed=true;
+      let n=1; while(used.has(n)) n++; b.num=n; used.add(n); changed=true;
     });
   });
   if(changed) save();
 }
 // numéros en double dans un même square -> ensemble de clés "sq-num"
 function cageConflicts(){
-  const seen={}, dup=new Set();
-  DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen[k])dup.add(k); seen[k]=true; } });
+  const seen=new Set(), dup=new Set();
+  DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen.has(k)) dup.add(k); seen.add(k); } });
   return dup;
 }
-function pastilleIcon(text, sq, color){
-  return L.divIcon({className:'', iconSize:[34,34], iconAnchor:[17,17], html:
-    `<div style="width:34px;height:34px;border-radius:50%;background:${color};color:#fff;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      box-shadow:0 1px 4px rgba(0,0,0,.45);border:2px solid #fff;line-height:1">
-      <span style="font-size:14px;font-weight:700;margin-top:1px">${text}</span>
-      <span style="font-size:11px;font-weight:700;margin-top:-2px;letter-spacing:.5px">${sq}</span>
-    </div>`});
-}
-let markerLayer=null, cageLabelById={};
-// cages créées (numéro figé) + détections restantes ("+"). Renseigne cageLabelById.
-function buildEntries(){
-  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;   // filet de sécurité (timing)
-  ensureCageNumbers();
-  const dup=cageConflicts();
-  const entries=[];
-  DB.buildings.forEach(b=>{ if(b.lat!=null) entries.push({lat:b.lat,lng:b.lng,kind:'cage',b,num:b.num,sq:b.sq,conflict:dup.has(b.sq+'-'+b.num)}); });
-  if(buildingsData) buildingsData.forEach(bd=>{
-    if(polyAreaM2(bd.coords)<DET.minArea) return;
-    detectEntrances(bd.coords).forEach(pt=>{
-      if(isCage(pt)||isDismissed(pt)) return;
-      entries.push({lat:pt[0],lng:pt[1],kind:'cand',levels:bd.levels,sq:squareOf(pt[0])});
-    });
-  });
-  cageLabelById={};
-  entries.forEach(e=>{ if(e.kind==='cage') cageLabelById[e.b.id]={num:e.num,sq:e.sq,conflict:e.conflict}; });
-  return entries;
-}
+let conflicts = new Set();
+function refreshNumbers(){ ensureCageNumbers(); conflicts = cageConflicts(); }
+const isConflict = b => conflicts.has(b.sq+'-'+b.num);
 // nom lisible d'une cage : "Cage 3 — Moulineaux" (astérisque si numéro en double)
-function cageLabel(b){
-  const l=cageLabelById[b.id];
-  return l ? `Cage ${l.num}${l.conflict?' *':''} — ${SQNAME[l.sq]}` : (b.addr||'Cage');
-}
-// dessine TOUT : cages (numéro figé) + entrées détectées ("+")
-function drawMarkers(){
-  if(!map) return;
-  if(markerLayer) map.removeLayer(markerLayer);
-  markerLayer=L.layerGroup().addTo(map);
-  buildEntries().forEach(e=>{
-    const done = e.kind==='cage' && cageDone(e.b);
-    const color = done ? '#378ADD' : '#EF9F27';   // bleu = faite, orange = pas faite
-    const text = e.kind==='cage' ? (e.num + (e.conflict?'*':'')) : '+';
-    const m = L.marker([e.lat,e.lng],{icon:pastilleIcon(text,e.sq,color)}).addTo(markerLayer);
-    if(e.kind==='cage'){ m.on('click',()=>openDetail(e.b.id)); }
-    else m.bindPopup('<div style="text-align:center;font:13px sans-serif;min-width:130px">Entrée de cage&nbsp;?'+
-      '<div style="margin-top:8px"><button onclick="createCageAt('+e.lat+','+e.lng+','+(e.levels||4)+')" style="padding:7px 10px;margin:0 3px;border:0;border-radius:7px;background:#378ADD;color:#fff;font-weight:600">Créer</button>'+
-      '<button onclick="dismissCandidate('+e.lat+','+e.lng+')" style="padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7">Retirer</button></div></div>');
-  });
-}
-// corriger le numéro / square figé d'une cage
-function setCageNum(id,val){
-  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
-  const n=parseInt(val,10); if(n>0) b.num=n; save(); renderDetail(); drawMarkers();
-}
-function setCageSquare(id,sq){
-  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
-  b.sq=sq; save(); renderDetail(); drawMarkers();
-}
+const cageLabel = b => b.num ? `Cage ${b.num}${isConflict(b)?' *':''} — ${SQNAME[b.sq]}` : (b.addr||'Cage');
 
 /* ---------- Contours immeubles + détection des cages d'escalier ---------- */
-let outlineLayer=null, candLayer=null, buildingsData=null;
-const DET={apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
-if(!DB.dismissed) DB.dismissed=[];   // entrées auto retirées à la main
+const DET = {apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
+let buildingsData = window.BUILDINGS_DATA || null;
+let candidates = null;   // entrées détectées, calculées une seule fois (la géométrie ne bouge pas)
 
 function projM(coords){
   const lat0=coords[0][0]*Math.PI/180, mLat=111320, mLon=111320*Math.cos(lat0);
   const p=coords.map(([la,lo])=>[(lo-coords[0][1])*mLon,(la-coords[0][0])*mLat]);
-  if(p.length>1){const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01)p.pop();}
+  if(p.length>1){ const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01) p.pop(); }
   return {p,mLat,mLon};
 }
-function polyAreaM2(coords){
-  const {p}=projM(coords); let a=0,n=p.length;
-  for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];a+=x1*y2-x2*y1;}
-  return Math.abs(a/2);
+function signedArea(p){
+  let a=0; const n=p.length;
+  for(let i=0;i<n;i++){ const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n]; a+=x1*y2-x2*y1; }
+  return a/2;
 }
 // Détecte les entrées (redans) -> [[lat,lon],...]
 function detectEntrances(coords){
-  const {p,mLat,mLon}=projM(coords); const n=p.length; if(n<6)return [];
-  let area=0; for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];area+=x1*y2-x2*y1;}
-  const ccw=area>0;
+  const {p,mLat,mLon}=projM(coords); const n=p.length;
+  if(n<6 || Math.abs(signedArea(p))<DET.minArea) return [];
+  const ccw=signedArea(p)>0;
   const len=i=>{const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];return Math.hypot(x2-x1,y2-y1);};
   const turn=i=>{const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n];
     const ax=b[0]-a[0],ay=b[1]-a[1],bx=c[0]-b[0],by=c[1]-b[1];
-    let t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
+    const t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
   const cand=[];
   for(let i=0;i<n;i++){
-    const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax)continue;
-    if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv)continue;              // deux coins convexes
-    if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank)continue;      // côtés = profondeur du porche
-    const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
-    let dx=b[0]-a[0],dy=b[1]-a[1]; const dl=Math.hypot(dx,dy); dx/=dl;dy/=dl;
-    const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                // normale extérieure
-    cand.push([mx+nx*1.6, my+ny*1.6]);
+    const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax) continue;
+    if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv) continue;              // deux coins convexes
+    if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank) continue;      // côtés = profondeur du porche
+    const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+    const dx=(b[0]-a[0])/eLen, dy=(b[1]-a[1])/eLen;
+    const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                 // normale extérieure
+    const e=[mx+nx*1.6, my+ny*1.6];
+    if(!cand.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge)) cand.push(e);
   }
-  const merged=[]; cand.forEach(e=>{ if(!merged.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge))merged.push(e); });
-  return merged.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
+  return cand.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
 }
-function nearM(pt,lat,lng,m){
-  const mLat=111320, mLon=111320*Math.cos(lat*Math.PI/180);
-  return Math.hypot((pt[0]-lat)*mLat,(pt[1]-lng)*mLon)<m;
+function getCandidates(){
+  if(!candidates && buildingsData)
+    candidates = buildingsData.flatMap(bd=>detectEntrances(bd.coords).map(pt=>({lat:pt[0],lng:pt[1],levels:bd.levels||4})));
+  return candidates || [];
 }
-const isCage=pt=>DB.buildings.some(b=>b.lat&&nearM(pt,b.lat,b.lng,5));
-const isDismissed=pt=>DB.dismissed.some(d=>nearM(pt,d[0],d[1],5));
+function nearM(lat1,lng1,lat2,lng2,m){
+  const mLon=111320*Math.cos(lat2*Math.PI/180);
+  return Math.hypot((lat1-lat2)*111320,(lng1-lng2)*mLon)<m;
+}
+const isCage = c => DB.buildings.some(b=>b.lat!=null && nearM(c.lat,c.lng,b.lat,b.lng,5));
+const isDismissed = c => DB.dismissed.some(d=>nearM(c.lat,c.lng,d[0],d[1],5));
 
-async function loadBuildings(){
-  if(!map) return;
-  buildingsData = window.BUILDINGS_DATA || buildingsData;   // intégré (marche en double-clic, sans serveur)
-  if(!buildingsData){ try{ buildingsData=await (await fetch('data/buildings.json')).json(); }catch(e){} }
-  ensureOutlines();
-  drawMarkers();
-}
-// dessine les contours une seule fois, dès que les données sont dispo (robuste au timing de chargement)
+// dessine les contours une seule fois
 function ensureOutlines(){
-  if(!map || outlineLayer) return;
-  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;
-  if(!buildingsData) return;
-  outlineLayer=L.layerGroup().addTo(map);
-  buildingsData.forEach(b=>L.polygon(b.coords,{color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}).addTo(outlineLayer));
+  if(!map || outlineLayer || !buildingsData) return;
+  outlineLayer = L.layerGroup(buildingsData.map(b=>L.polygon(b.coords,
+    {color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}))).addTo(map);
 }
-// compat : tout est dessiné par drawMarkers désormais
-function refreshEntrances(){ drawMarkers(); }
-// depuis le menu d'une pastille : ouvrir la création de cage pré-remplie
-let pendingSquare='M';
+function pastilleIcon(text, sq, cls){
+  return L.divIcon({className:'pin '+cls, iconSize:[34,34], iconAnchor:[17,17],
+    html:`<div class="pin-in"><b>${text}</b><i>${sq}</i></div>`});
+}
+// dessine TOUT : cages (numéro figé, bleu = faite / orange = pas faite) + entrées détectées ("+")
+function drawMarkers(){
+  if(!map) return;
+  ensureOutlines();
+  const ms=[];
+  DB.buildings.forEach(b=>{
+    if(b.lat==null) return;
+    const m=L.marker([b.lat,b.lng],{icon:pastilleIcon(b.num+(isConflict(b)?'*':''), b.sq, cageDone(b)?'done':'todo')});
+    m.on('click',()=>openDetail(b.id)); ms.push(m);
+  });
+  getCandidates().forEach(c=>{
+    if(isCage(c)||isDismissed(c)) return;
+    ms.push(L.marker([c.lat,c.lng],{icon:pastilleIcon('+', squareOf(c.lat), 'todo cand')})
+      .bindPopup(`<div class="cpop">Entrée de cage&nbsp;?<div>
+        <button class="ok" onclick="openCageModal(${c.lat},${c.lng},${c.levels})">Créer</button>
+        <button onclick="dismissCandidate(${c.lat},${c.lng})">Retirer</button></div></div>`));
+  });
+  if(markerLayer) map.removeLayer(markerLayer);
+  markerLayer = L.layerGroup(ms).addTo(map);
+}
+// données des contours : intégrées (double-clic, sans serveur), sinon fichier json
+if(map && !buildingsData)
+  fetch('data/buildings.json').then(r=>r.json()).then(d=>{ buildingsData=d; drawMarkers(); }).catch(()=>{});
+
+// ouvre la fenêtre "nouvelle cage" : square par défaut selon la position, numéro suggéré
 function pickSquare(sq){
   pendingSquare=sq;
   document.getElementById('sqM').classList.toggle('sel', sq==='M');
   document.getElementById('sqA').classList.toggle('sel', sq==='A');
   document.getElementById('fNum').value = nextCageNum(sq);   // numéro suggéré = 1er libre
 }
-// ouvre la fenêtre "nouvelle cage" : square par défaut selon la position, numéro suggéré
 function openCageModal(lat,lng,levels){
   if(map) map.closePopup();
   pendingLatLng={lat,lng};
@@ -376,33 +397,62 @@ function openCageModal(lat,lng,levels){
   document.getElementById('fDoors').value = 2;
   openOv('ovBuilding');
 }
-function createCageAt(lat,lng,levels){ openCageModal(lat,lng,levels); }
 // retirer définitivement une pastille auto erronée
 function dismissCandidate(lat,lng){
   map.closePopup();
-  DB.dismissed.push([lat,lng]); save();
-  refreshEntrances();
+  DB.dismissed.push([lat,lng]); save(); drawMarkers();
 }
 
-/* ---------- Création bâtiment ---------- */
+/* ---------- Création / édition d'une cage ---------- */
+const newDoor = (floor,index) => ({floor, index, status:'todo', note:'', date:'', by:''});
 function createBuilding(){
   const nf = Math.max(1, +document.getElementById('fFloors').value||1);
   const nd = Math.max(1, +document.getElementById('fDoors').value||1);
-  const ll = pendingLatLng || (map ? map.getCenter() : {lat:48.8566,lng:2.3522});
-  const sq = pendingSquare;                                   // square choisi dans la fenêtre
-  const num = Math.max(1, +document.getElementById('fNum').value || nextCageNum(sq));  // numéro saisi
+  const ll = pendingLatLng || (map ? map.getCenter() : {lat:48.8283,lng:2.2521});
+  const sq = pendingSquare;
+  const num = Math.max(1, +document.getElementById('fNum').value || nextCageNum(sq));
   const doors = [];
-  for(let f=0; f<nf; f++) for(let i=0; i<nd; i++)
-    doors.push({floor:f, index:i, status:'todo', note:'', date:'', by:''});
+  for(let f=0; f<nf; f++) for(let i=0; i<nd; i++) doors.push(newDoor(f,i));
   DB.buildings.push({id:'b'+Date.now(), addr:"Cage d'escalier", sector:'', floors:nf, perFloor:nd, lat:ll.lat, lng:ll.lng, sq, num, doors});
   save(); closeOv('ovBuilding'); render();
 }
+// toute modification d'une cage : sauvegarde + rafraîchit détail, carte et compteur
+function commit(){ save(); refreshNumbers(); renderDetail(); drawMarkers(); updateHeader(); }
+function setCageNum(id,val){
+  const b=findB(id), n=parseInt(val,10); if(!b) return;
+  if(n>0) b.num=n; commit();
+}
+function setCageSquare(id,sq){ const b=findB(id); if(b){ b.sq=sq; commit(); } }
+function setCageNote(id,val){ const b=findB(id); if(b){ b.note=val; save(); } }
+function addFloor(id){
+  const b=findB(id); if(!b) return;
+  const per=Math.max(1,b.perFloor||2);
+  for(let i=0;i<per;i++) b.doors.push(newDoor(b.floors,i));
+  b.floors++; commit();
+}
+function addDoorToFloor(id,floor){
+  const b=findB(id); if(!b) return;
+  const idxs=b.doors.filter(d=>d.floor===floor).map(d=>d.index);
+  b.doors.push(newDoor(floor, idxs.length?Math.max(...idxs)+1:0)); commit();
+}
+function deleteFloor(id,floor){
+  const b=findB(id); if(!b) return;
+  if(b.floors<=1){ alert('Une cage doit garder au moins un étage.'); return; }
+  if(!confirm('Êtes-vous sûr de vouloir supprimer cet étage ?')) return;
+  b.doors = b.doors.filter(d=>d.floor!==floor);
+  b.doors.forEach(d=>{ if(d.floor>floor) d.floor--; });   // décale les étages au-dessus
+  b.floors--; commit();
+}
+function deleteBuilding(id){
+  if(!confirm('Êtes-vous sûr de vouloir supprimer le bâtiment ?')) return;
+  DB.buildings = DB.buildings.filter(b=>b.id!==id);
+  curBuilding=null; save(); setTab('list'); render();
+}
 
-/* ---------- Détail bâtiment ---------- */
+/* ---------- Détail d'une cage ---------- */
 function openDetail(id){
-  curBuilding = DB.buildings.find(b=>b.id===id);
-  setTab('detail');
-  renderDetail();
+  curBuilding = findB(id);
+  setTab('detail'); renderDetail();
 }
 // recherche "3M" / "5 A" -> ouvre la cage n°3 du square M
 function goToCage(){
@@ -410,32 +460,33 @@ function goToCage(){
   const v=(el.value||'').toUpperCase();
   const num=parseInt((v.match(/\d+/)||[])[0],10);
   const sq=(v.match(/[MA]/)||[])[0];
-  const b=(num&&sq)?DB.buildings.find(x=>x.num===num&&x.sq===sq):null;
+  const b=(num&&sq) ? DB.buildings.find(x=>x.num===num&&x.sq===sq) : null;
   if(b){ el.value=''; el.blur(); openDetail(b.id); }
-  else { el.style.borderColor='#E24B4A'; }   // introuvable
+  else el.style.borderColor='#E24B4A';   // introuvable
 }
-function floorName(f){ return f===0?'RDC':(f+'e'==='1e'?'1er':f+'e'); }
+const floorName = f => f===0 ? 'RDC' : f===1 ? '1er' : f+'e';
+function progressCard(b, long){
+  const done=doneCount(b), n=b.doors.length;
+  return `<div class="row">
+      <div class="bicon">🏢</div>
+      <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} ${long?'étages':'ét.'} · ${n} portes${b.sector?' · '+esc(b.sector):''}</p></div>
+      <div class="count"><b>${done}/${n}</b>${long?'<div class="sub">visitées</div>':''}</div>
+    </div><div class="bar"><span style="width:${n?done/n*100:0}%"></span></div>`;
+}
 function renderDetail(){
   const b = curBuilding; if(!b) return;
-  if(!cageLabelById[b.id]) buildEntries();
-  const done = b.doors.filter(d=>d.status!=='todo').length;
-  let html = `<button class="back" onclick="setTab('list');render()">← Retour</button>`;
-  html += `<div class="bcard" style="cursor:default"><div class="row">
-      <div class="bicon">🏢</div>
-      <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} étages · ${b.doors.length} portes${b.sector?' · '+esc(b.sector):''}</p></div>
-      <div class="count"><b>${done}/${b.doors.length}</b><div class="sub">visitées</div></div>
-    </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
-  // correction du numéro figé + square
-  const lbl = cageLabelById[b.id] || {num:b.num, sq:b.sq, conflict:false};
-  html += `<div class="bcard" style="cursor:default;margin-top:-2px">
+  const on = sq => b.sq===sq ? 'background:#EF9F27;color:#fff' : '';
+  let html = `<button class="back" onclick="setTab('list');render()">← Retour</button>
+    <div class="bcard" style="cursor:default">${progressCard(b,true)}</div>
+    <div class="bcard" style="cursor:default;margin-top:-2px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#6b7280">
         <span>N° de cage</span>
-        <input type="number" min="1" value="${lbl.num}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
+        <input type="number" min="1" value="${b.num||''}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
         <span>Square</span>
-        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='M'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','M')">M</button>
-        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='A'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','A')">A</button>
+        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${on('M')}" onclick="setCageSquare('${b.id}','M')">M</button>
+        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${on('A')}" onclick="setCageSquare('${b.id}','A')">A</button>
       </div>
-      ${lbl.conflict?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
+      ${isConflict(b)?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
     </div>`;
   // étages de haut en bas — bouton + à gauche pour ajouter une porte à cet étage
   for(let f=b.floors-1; f>=0; f--){
@@ -443,69 +494,35 @@ function renderDetail(){
       <button class="addoor" title="Ajouter une porte à cet étage" onclick="addDoorToFloor('${b.id}',${f})">+</button>
       <div class="lab">${floorName(f)}</div><div class="doors">`;
     b.doors.filter(d=>d.floor===f).forEach(d=>{
-      const isTodo = d.status==='todo';
-      html += `<button class="door ${isTodo?'todo':''}" style="${isTodo?'':'background:'+colorOf(d.status)}"
+      const todo = d.status==='todo';
+      html += `<button class="door ${todo?'todo':''}" style="${todo?'':'background:'+colorOf(d.status)}"
                  onclick="openDoor('${b.id}',${d.floor},${d.index})" title="${esc(d.note)}">
                  🚪${d.note?'<span class="note-dot"></span>':''}</button>`;
     });
     html += `</div><button class="delfloor" title="Supprimer cet étage" onclick="deleteFloor('${b.id}',${f})">×</button></div>`;
   }
-  html += `<div class="legend">`;
-  STATUSES.forEach(s=> html+=`<span><span class="sw" style="background:${s.key==='todo'?'#f4f5f7;border:1px solid #cbd0d6':s.color}"></span>${s.label}</span>`);
-  html += `</div>`;
-  // encart notes
-  html += `<label style="display:block;font-size:13px;color:#6b7280;margin:16px 0 4px">Notes</label>
-    <textarea id="cageNote" rows="3" placeholder="Digicode, remarques, à repasser…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;resize:vertical" onchange="setCageNote('${b.id}',this.value)">${esc(b.note||'')}</textarea>`;
-  // actions
-  html += `<button class="btn ghost" style="margin-top:12px" onclick="addFloor('${b.id}')">+ Ajouter un étage</button>`;
-  html += `<button class="btn ghost" style="margin-top:8px;color:#E24B4A;border-color:#f0b3b3" onclick="deleteBuilding('${b.id}')">Supprimer ce bâtiment</button>`;
+  html += `<div class="legend">${STATUSES.map(s=>
+    `<span><span class="sw" style="background:${s.key==='todo'?'#f4f5f7;border:1px solid #cbd0d6':s.color}"></span>${s.label}</span>`).join('')}</div>
+    <label style="display:block;font-size:13px;color:#6b7280;margin:16px 0 4px">Notes</label>
+    <textarea id="cageNote" rows="3" placeholder="Digicode, remarques, à repasser…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;resize:vertical" onchange="setCageNote('${b.id}',this.value)">${esc(b.note)}</textarea>
+    <button class="btn ghost" style="margin-top:12px" onclick="addFloor('${b.id}')">+ Ajouter un étage</button>
+    <button class="btn ghost" style="margin-top:8px;color:#E24B4A;border-color:#f0b3b3" onclick="deleteBuilding('${b.id}')">Supprimer ce bâtiment</button>`;
   document.getElementById('detail').innerHTML = html;
-}
-function addFloor(id){
-  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
-  const f=b.floors, per=Math.max(1,b.perFloor||2);
-  for(let i=0;i<per;i++) b.doors.push({floor:f,index:i,status:'todo',note:'',date:'',by:''});
-  b.floors++; save(); renderDetail(); drawMarkers();
-}
-function addDoorToFloor(id,floor){
-  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
-  const idxs=b.doors.filter(d=>d.floor===floor).map(d=>d.index);
-  const next=idxs.length?Math.max(...idxs)+1:0;
-  b.doors.push({floor,index:next,status:'todo',note:'',date:'',by:''});
-  save(); renderDetail(); drawMarkers();
-}
-function deleteFloor(id,floor){
-  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
-  if(b.floors<=1){ alert('Une cage doit garder au moins un étage.'); return; }
-  if(!confirm('Êtes-vous sûr de vouloir supprimer cet étage ?'))return;
-  b.doors = b.doors.filter(d=>d.floor!==floor);
-  b.doors.forEach(d=>{ if(d.floor>floor) d.floor--; });   // décale les étages au-dessus
-  b.floors--; save(); renderDetail(); drawMarkers(); updateHeader();
-}
-function setCageNote(id,val){
-  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
-  b.note=val; save();
-}
-function deleteBuilding(id){
-  if(!confirm('Êtes-vous sûr de vouloir supprimer le bâtiment ?'))return;
-  DB.buildings = DB.buildings.filter(b=>b.id!==id);
-  save(); setTab('list'); render();
 }
 
 /* ---------- Saisie porte ---------- */
 function openDoor(bid,floor,index){
-  const b = DB.buildings.find(x=>x.id===bid);
-  const d = b.doors.find(x=>x.floor===floor && x.index===index);
+  const b = findB(bid);
+  const d = b && b.doors.find(x=>x.floor===floor && x.index===index); if(!d) return;
   curDoor = {b,d};
-  curDoorStatus = d.status;
   document.getElementById('doorTitle').textContent = `${floorName(floor)} · porte ${index+1}`;
   document.getElementById('fNote').value = d.note||'';
   const grid = document.getElementById('statusGrid'); grid.innerHTML='';
   STATUSES.forEach(s=>{
     const btn = document.createElement('button');
     btn.textContent = s.label;
-    btn.style.background = s.key==='todo' ? '#9aa0a6' : s.color;
-    if(s.key===curDoorStatus) btn.classList.add('sel');
+    btn.style.background = s.color;
+    if(s.key===d.status) btn.classList.add('sel');
     btn.onclick = ()=> pickDoorStatus(s.key);   // taper un statut = enregistre + revient à la cage
     grid.appendChild(btn);
   });
@@ -518,34 +535,26 @@ function pickDoorStatus(status){
   d.status = status;
   d.note = document.getElementById('fNote').value.trim();
   d.date = status==='todo' ? '' : new Date().toISOString().slice(0,10);
-  save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
+  closeOv('ovDoor'); commit();
 }
 function deleteDoor(){
   if(!curDoor) return;
-  if(!confirm('Êtes-vous sûr de vouloir supprimer cette porte ?'))return;
-  const b=curDoor.b, d=curDoor.d;
-  b.doors = b.doors.filter(x=>!(x.floor===d.floor && x.index===d.index));
+  if(!confirm('Êtes-vous sûr de vouloir supprimer cette porte ?')) return;
+  const {b,d}=curDoor;
+  b.doors = b.doors.filter(x=>x!==d);
   // ré-indexe les portes restantes de cet étage (0,1,2…)
   b.doors.filter(x=>x.floor===d.floor).sort((a,c)=>a.index-c.index).forEach((x,i)=>x.index=i);
-  save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
+  curDoor=null; closeOv('ovDoor'); commit();
 }
 
-/* ---------- Liste ---------- */
+/* ---------- Liste + stats ---------- */
 function render(){
-  buildEntries();   // met à jour la numérotation avant d'afficher la liste
+  refreshNumbers();   // numérotation à jour avant tout affichage
   const list = document.getElementById('blist');
-  if(!DB.buildings.length){ list.innerHTML = `<div class="empty">Aucun bâtiment.<br>Va sur l'onglet Carte et touche un point pour en ajouter un.</div>`; }
-  else {
-    list.innerHTML = DB.buildings.map(b=>{
-      const done = b.doors.filter(d=>d.status!=='todo').length;
-      return `<div class="bcard" onclick="openDetail('${b.id}')"><div class="row">
-        <div class="bicon">🏢</div>
-        <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} ét. · ${b.doors.length} portes${b.sector?' · '+esc(b.sector):''}</p></div>
-        <div class="count"><b>${done}/${b.doors.length}</b></div>
-      </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
-    }).join('');
-  }
-  ensureOutlines(); drawMarkers(); renderStats(); updateHeader();
+  list.innerHTML = DB.buildings.length
+    ? DB.buildings.map(b=>`<div class="bcard" onclick="openDetail('${b.id}')">${progressCard(b,false)}</div>`).join('')
+    : `<div class="empty">Aucun bâtiment.<br>Va sur l'onglet Carte et touche un point pour en ajouter un.</div>`;
+  drawMarkers(); renderStats(); updateHeader();
 }
 function updateHeader(){
   const all = DB.buildings.flatMap(b=>b.doors);
@@ -553,26 +562,27 @@ function updateHeader(){
   document.getElementById('hstat').textContent = DB.buildings.length ? `${done}/${all.length} portes` : '';
 }
 function renderStats(){
-  const all = DB.buildings.flatMap(b=>b.doors);
-  const by = k => all.filter(d=>d.status===k).length;
-  const m = document.getElementById('metrics');
+  const by = {}; let total=0;
+  DB.buildings.forEach(b=>b.doors.forEach(d=>{ by[d.status]=(by[d.status]||0)+1; total++; }));
   const cards = [
     {n:DB.buildings.length, l:'Bâtiments'},
-    {n:all.length, l:'Portes totales'},
-    {n:by('interesse'), l:'Intéressés', c:'#1D9E75'},
-    {n:by('refus'), l:'Refus', c:'#E24B4A'},
-    {n:by('absent'), l:'Absents', c:'#EF9F27'},
-    {n:by('todo'), l:'À faire', c:'#9aa0a6'},
+    {n:total, l:'Portes totales'},
+    {n:by.interesse||0, l:'Intéressés', c:'#1D9E75'},
+    {n:by.refus||0, l:'Refus', c:'#E24B4A'},
+    {n:by.absent||0, l:'Absents', c:'#EF9F27'},
+    {n:by.todo||0, l:'À faire', c:'#9aa0a6'},
   ];
-  m.innerHTML = cards.map(c=>`<div class="metric"><div class="n" style="${c.c?'color:'+c.c:''}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
+  document.getElementById('metrics').innerHTML = cards.map(c=>
+    `<div class="metric"><div class="n" style="${c.c?'color:'+c.c:''}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
 }
 
-/* ---------- Export CSV ---------- */
+/* ---------- Export / sauvegarde ---------- */
 function download(name, text, type){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([text],{type}));
-  a.download=name; a.click();
+  const a=document.createElement('a'), url=URL.createObjectURL(new Blob([text],{type}));
+  a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
 }
+const today = () => new Date().toISOString().slice(0,10);
 function exportCSV(){
   const rows = [['Batiment','Secteur','Etage','Porte','Statut','Note','Date','Lat','Lng']];
   DB.buildings.forEach(b=> b.doors.forEach(d=>
@@ -580,16 +590,15 @@ function exportCSV(){
                b.lat!=null?b.lat.toFixed(7):'', b.lng!=null?b.lng.toFixed(7):''])
   ));
   const csv = '﻿'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
-  download('porte-a-porte-'+new Date().toISOString().slice(0,10)+'.csv', csv, 'text/csv');
+  download('porte-a-porte-'+today()+'.csv', csv, 'text/csv');
 }
 // Sauvegarde complète (cages + portes + pastilles retirées) dans un fichier .json
 function backupJSON(){
-  download('porte-a-porte-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json',
-           JSON.stringify(DB,null,2), 'application/json');
+  download('porte-a-porte-sauvegarde-'+today()+'.json', JSON.stringify(DB,null,2), 'application/json');
 }
 // remet toutes les portes à "À faire" — garde cages, étages, portes et notes
 function resetStates(){
-  if(!confirm('Remettre toutes les portes à « À faire » ?\nLes cages, étages, portes et notes sont conservés.'))return;
+  if(!confirm('Remettre toutes les portes à « À faire » ?\nLes cages, étages, portes et notes sont conservés.')) return;
   DB.buildings.forEach(b=>b.doors.forEach(d=>{ d.status='todo'; d.date=''; d.by=''; }));
   save(); render();
 }
@@ -601,7 +610,7 @@ function restoreJSON(input){
     const d=JSON.parse(r.result);
     if(!d||!Array.isArray(d.buildings)) throw 0;
     if(!d.dismissed) d.dismissed=[];
-    DB=d; save(); setTab('map'); render();
+    DB=d; curBuilding=null; save(); setTab('map'); render();
     alert('Sauvegarde chargée : '+DB.buildings.length+' cage(s).');
   }catch(e){ alert('Fichier invalide.'); } };
   r.readAsText(file);
@@ -609,14 +618,13 @@ function restoreJSON(input){
 }
 
 /* ---------- UI helpers ---------- */
-function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function openOv(id){document.getElementById(id).classList.add('show')}
-function closeOv(id){document.getElementById(id).classList.remove('show')}
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function openOv(id){ document.getElementById(id).classList.add('show'); }
+function closeOv(id){ document.getElementById(id).classList.remove('show'); }
 function setTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-'+tab).classList.add('active');
-  if(tab==='map' && map) setTimeout(()=>map.invalidateSize(),50);
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+tab));
+  if(tab==='map' && map) setTimeout(()=>frameMap(false),50);   // la carte a pu changer de taille pendant qu'elle était masquée
 }
 document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>{ setTab(b.dataset.tab); render(); });
 document.querySelectorAll('.overlay').forEach(o=> o.onclick=e=>{ if(e.target===o) o.classList.remove('show'); });
