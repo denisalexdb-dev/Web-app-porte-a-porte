@@ -1,0 +1,15 @@
+{
+  "name": "Porte à porte",
+  "short_name": "Porte à porte",
+  "description": "Suivi du porte-à-porte : cages d'escalier, portes et statuts, en temps réel.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f7",
+  "theme_color": "#378ADD",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

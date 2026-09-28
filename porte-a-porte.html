@@ -2,8 +2,16 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Porte à porte</title>
+<!-- PWA : installable sur mobile -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#378ADD" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Porte à porte" />
 <link rel="stylesheet" href="lib/leaflet.css" />
 <style>
   :root{
@@ -27,7 +35,13 @@
   #map{width:100%;height:100%}
   #mapWrap{position:relative;height:100%}
   .hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(28,29,33,.85);color:#fff;font-size:12px;padding:7px 12px;border-radius:20px;z-index:500;white-space:nowrap;pointer-events:none}
+  .basebtn{position:absolute;top:10px;right:10px;z-index:600;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;font-family:inherit;color:var(--ink);cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.25)}
+  .citesel{position:absolute;top:10px;left:52px;z-index:600;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;font-family:inherit;color:var(--ink);cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.25);max-width:150px}
+  .hint{top:52px !important}
   .list{padding:12px}
+  .citehead{display:flex;gap:6px;padding:4px 0 10px;flex-wrap:wrap}
+  .citetab{flex:1;min-width:120px;padding:9px;border:1px solid var(--line);background:#fff;border-radius:9px;font-size:13px;font-weight:600;font-family:inherit;color:var(--muted);cursor:pointer}
+  .citetab.sel{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
   .bcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer}
   .bcard .row{display:flex;align-items:center;gap:10px}
   .bicon{width:38px;height:38px;border-radius:9px;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
@@ -75,27 +89,18 @@
   .metric .n{font-size:26px;font-weight:600}
   .metric .l{font-size:12px;color:var(--muted);margin-top:2px}
   .metric .n small{font-size:14px;color:var(--muted);font-weight:400}
-  /* pastilles de la carte */
-  .pin-in{width:34px;height:34px;border-radius:50%;background:#EF9F27;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transition:transform .15s}
-  .pin.done .pin-in{background:#378ADD}
-  .pin-in b{font-size:14px;margin-top:1px}
-  .pin-in i{font-size:11px;font-weight:700;font-style:normal;margin-top:-2px;letter-spacing:.5px}
-  .far .pin-in{transform:scale(.55)}
-  .far .pin.cand{display:none}
-  .cpop{text-align:center;font:13px sans-serif;min-width:130px}
-  .cpop div{margin-top:8px}
-  .cpop button{padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7;font:inherit}
-  .cpop button.ok{border:0;background:#378ADD;color:#fff;font-weight:600}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
     <h1>Porte à porte</h1>
-    <input id="search" class="search" placeholder="N° + M/A — ex : 3M" inputmode="text"
+    <input id="search" class="search" placeholder="N° + M/A/P — ex : 3M" inputmode="text"
            onkeydown="if(event.key==='Enter')goToCage()" oninput="this.style.borderColor=''" />
-    <div class="stat" id="hstat"></div>
+    <div style="text-align:right;flex-shrink:0">
+      <div class="stat" id="hstat"></div>
+      <div id="fbstatus" style="font-size:11px;color:#9aa0a6"></div>
+    </div>
   </header>
   <div class="tabs">
     <button data-tab="map" class="active">Carte</button>
@@ -106,6 +111,8 @@
   <div class="view active" id="view-map">
     <div id="mapWrap">
       <div id="map"></div>
+      <select id="citeSelect" class="citesel" onchange="switchCite(this.value)"></select>
+      <button id="baseBtn" class="basebtn" onclick="cycleBasemap()">Satellite</button>
       <div class="hint" id="hint">Touchez la carte pour ajouter un bâtiment</div>
     </div>
   </div>
@@ -122,6 +129,10 @@
       <button class="btn ghost" onclick="document.getElementById('fileLoad').click()">📂 Charger une sauvegarde</button>
       <input type="file" id="fileLoad" accept=".json" style="display:none" onchange="restoreJSON(this)" />
       <button class="btn ghost" onclick="resetStates()">Réinitialiser les visites</button>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn" style="flex:1;margin-top:0" onclick="installAndroid()">Appli Android</button>
+        <button class="btn" style="flex:1;margin-top:0" onclick="installApple()">Appli Apple</button>
+      </div>
     </div>
   </div>
 
@@ -136,10 +147,7 @@
   <div class="sheet">
     <h3>Nouvelle cage d'escalier</h3>
     <label>Square</label>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button type="button" id="sqM" class="sqbtn" onclick="pickSquare('M')">Square des Moulineaux</button>
-      <button type="button" id="sqA" class="sqbtn" onclick="pickSquare('A')">Square de l'Avre</button>
-    </div>
+    <div id="sqButtons" style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap"></div>
     <label>Numéro de la cage</label>
     <input id="fNum" type="number" min="1" />
     <div style="display:flex;gap:10px">
@@ -166,6 +174,8 @@
 
 <script src="lib/leaflet.js"></script>
 <script src="data/buildings.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 const STATUSES = [
   {key:'todo',      label:'À faire',   color:'#9aa0a6'},
@@ -174,319 +184,414 @@ const STATUSES = [
   {key:'absent',    label:'Absent',    color:'#EF9F27'},
   {key:'refus',     label:'Refus',     color:'#E24B4A'},
 ];
-const STATUS_BY = Object.fromEntries(STATUSES.map(s=>[s.key,s]));
-const colorOf = k => (STATUS_BY[k]||STATUSES[0]).color;
-const labelOf = k => (STATUS_BY[k]||STATUSES[0]).label;
+const colorOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).color;
+const labelOf = k => (STATUSES.find(s=>s.key===k)||STATUSES[0]).label;
 
-let DB;
-try { DB = JSON.parse(localStorage.getItem('pap')||'null'); } catch(e){ DB = null; }
-if(!DB || !Array.isArray(DB.buildings)) DB = {buildings:[]};
-if(!DB.dismissed) DB.dismissed = [];   // entrées auto retirées à la main
-function save(){ localStorage.setItem('pap', JSON.stringify(DB)); }
-const findB = id => DB.buildings.find(b=>b.id===id);
+let DB = JSON.parse(localStorage.getItem('pap')||'null') || {buildings:[]};
+if(!DB.dismissed) DB.dismissed=[];
+// compat : anciennes entrées "dismissed" au format [lat,lng] -> {lat,lng} (Firestore n'accepte pas les tableaux imbriqués)
+DB.dismissed = DB.dismissed.map(d=>Array.isArray(d)?{lat:d[0],lng:d[1]}:d);
 
-let pendingLatLng = null;   // position de la cage en cours de création
-let pendingSquare = 'M';
-let curBuilding = null;     // cage ouverte dans le détail
-let curDoor = null;         // {b, d}
+/* ===================== FIREBASE / FIRESTORE ===================== */
+/*  👉 COLLE ICI la config de TON projet Firebase (Console Firebase >
+    Paramètres du projet > tes applications > SDK > Configuration).
+    Tant que ce n'est pas rempli, l'app marche en local (localStorage). */
+const firebaseConfig = {
+  apiKey: "AIzaSyDwmHbcZjFLNPIidMP0oeywG9TYt-Fldn8",
+  authDomain: "projet-webb-app-porte-a-porte.firebaseapp.com",
+  projectId: "projet-webb-app-porte-a-porte",
+  storageBucket: "projet-webb-app-porte-a-porte.firebasestorage.app",
+  messagingSenderId: "772751219240",
+  appId: "1:772751219240:web:e63fc54ab398075eff731d",
+  measurementId: "G-4LSN20XZFB"
+};
+
+let fbDoc=null, applyingRemote=false, saveTimer=null;
+function firebaseReady(){
+  return typeof firebase!=='undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey!=='A_REMPLIR';
+}
+function initFirebase(){
+  if(!firebaseReady()){ setSync('local'); return; }
+  try{
+    firebase.initializeApp(firebaseConfig);
+    const fs = firebase.firestore();
+    try{ fs.settings({ experimentalAutoDetectLongPolling: true }); }catch(e){}  // temps réel robuste : bascule auto en long-polling sur réseau restrictif
+    fbDoc = fs.collection('porteaporte').doc('etat');
+    setSync('connexion…');
+    let firstSync=true;
+    fbDoc.onSnapshot(snap=>{
+      setSync('sync');
+      // écho de NOS propres écritures (pas encore confirmées) : déjà à l'écran -> on ignore
+      if(snap.metadata && snap.metadata.hasPendingWrites) return;
+      const remote = (snap.exists && snap.data() && Array.isArray(snap.data().buildings)) ? snap.data() : null;
+      if(firstSync){
+        firstSync=false;
+        // 1ère connexion : la base fait foi si elle contient des cages ;
+        // sinon (base vide) on y envoie les données locales sans les perdre.
+        if(remote && remote.buildings.length>0) applyRemote(remote);
+        else pushToFirestore();
+      } else if(remote){
+        applyRemote(remote);                 // mise à jour venant d'un autre équipier
+      }
+    }, err=>{ console.warn('Firestore onSnapshot:', err); setSync('erreur'); });
+  }catch(e){ console.warn('Firebase init:', e); setSync('erreur'); }
+}
+function pushToFirestore(){
+  if(!fbDoc) return;
+  fbDoc.set({buildings:DB.buildings, dismissed:DB.dismissed||[], updatedAt:Date.now()})
+       .catch(e=>console.warn('Firestore set:', e));
+}
+// applique un état reçu de Firestore sans le renvoyer (évite la boucle)
+function applyRemote(data){
+  applyingRemote=true;
+  DB={buildings:data.buildings||[], dismissed:data.dismissed||[]};
+  localStorage.setItem('pap', JSON.stringify(DB));
+  applyingRemote=false;
+  // re-lier la cage ouverte à l'objet frais (sinon référence périmée après synchro)
+  if(curBuilding) curBuilding = DB.buildings.find(b=>b.id===curBuilding.id) || null;
+  render();
+  if(document.getElementById('view-detail').classList.contains('active')){
+    if(curBuilding) renderDetail(); else setTab('list');
+  }
+}
+function setSync(state){
+  const el=document.getElementById('fbstatus'); if(!el) return;
+  const map={ 'sync':['☁ synchronisé','#1D9E75'], 'connexion…':['☁ connexion…','#EF9F27'],
+              'local':['● local','#9aa0a6'], 'erreur':['⚠ hors ligne','#E24B4A'] };
+  const [txt,col]=map[state]||map.local; el.textContent=txt; el.style.color=col;
+}
+
+function save(){
+  localStorage.setItem('pap', JSON.stringify(DB));
+  if(fbDoc && !applyingRemote){                 // écrit dans Firestore (groupé pour limiter les écritures)
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(pushToFirestore, 300);
+  }
+}
+
+let pendingLatLng = null;   // position du bâtiment en cours de création
+let curBuilding = null;     // bâtiment ouvert dans le détail
+let curDoor = null;         // {building, floor, index}
+let curDoorStatus = 'todo';
 
 /* ---------- Carte ---------- */
-// Vue d'accueil : cadrage par 2 intersections, chacune posée sur un bord latéral
-const EDGE_L = [48.8283903, 2.2505021]; // bord gauche : Rue de Seine × Avenue Pierre Grenier
-const EDGE_R = [48.8281580, 2.2536653]; // bord droit  : Quai du Point du Jour × Rue Émile Duclaux
-// Zone de déplacement autorisée : la cité + le rond-point du Pont de Sèvres (à l'ouest), avec un peu de marge
-const ZONE = [[48.8255, 2.2265], [48.8315, 2.2545]];
-let map = null, homeZoom = 0, markerLayer = null, outlineLayer = null;
-
-// zoom qui fait tenir pile EDGE_L -> EDGE_R dans la largeur de l'écran
-function homeView(){
-  const crs = map.options.crs;
-  const dx = crs.latLngToPoint(L.latLng(EDGE_R),0).x - crs.latLngToPoint(L.latLng(EDGE_L),0).x;
-  return { center:[(EDGE_L[0]+EDGE_R[0])/2, (EDGE_L[1]+EDGE_R[1])/2], zoom:Math.log2(map.getSize().x/dx) };
+let map = null, markers = [];
+// fonds de carte (bascule via le bouton)
+const BASEMAPS = {
+  plan: { label:'Plan', next:'satellite',
+    make:()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+             {maxZoom:19,maxNativeZoom:19,subdomains:'abc',attribution:'© OpenStreetMap'}) },
+  satellite: { label:'Satellite', next:'plan',
+    make:()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+             {maxZoom:22,maxNativeZoom:19,attribution:'© Esri'}) }
+};
+let currentBase='plan', baseLayer=null;
+function setBasemap(key){
+  if(!map) return;
+  if(baseLayer) map.removeLayer(baseLayer);
+  currentBase=key;
+  baseLayer=BASEMAPS[key].make().addTo(map);
+  if(baseLayer.bringToBack) baseLayer.bringToBack();
+  const btn=document.getElementById('baseBtn');
+  if(btn) btn.textContent=BASEMAPS[BASEMAPS[key].next].label;   // le bouton affiche l'autre carte
 }
-// recalcule les limites (zoom mini + zone bloquée) ; recentre seulement si demandé
-function frameMap(recenter){
-  map.invalidateSize();
-  const size = map.getSize(); if(!size.x || !size.y) return;   // onglet carte masqué
-  const h = homeView(); homeZoom = h.zoom;
-  // emprise de la vue d'accueil, pour qu'elle reste toujours atteignable en entier
-  const c = map.project(h.center, h.zoom), half = size.divideBy(2);
-  const area = L.latLngBounds(ZONE)
-    .extend(map.unproject(c.subtract(half), h.zoom))
-    .extend(map.unproject(c.add(half), h.zoom));
+function cycleBasemap(){ setBasemap(BASEMAPS[currentBase].next); }
+// ---- Cités (secteurs de prospection) ----
+const CITES = {
+  ma: { name:'Moulineaux / Avre', squares:['M','A'],
+        edges:{ left:[48.8283903,2.2505021], right:[48.8281580,2.2536653] } },  // bords = 2 intersections
+  ph: { name:'Place Haute', squares:['P'],
+        bounds:[[48.829288,2.233831],[48.831815,2.237565]] }
+};
+let activeCite = CITES[localStorage.getItem('cite')] ? localStorage.getItem('cite') : 'ma';
+let framedCite = null;   // cité pour laquelle la carte est actuellement cadrée
+const mapVisible = () => document.getElementById('view-map').classList.contains('active');
+// cadre la carte sur la cité active (bords précis pour M/A, emprise pour Place Haute) + verrouille
+function frameCite(){
+  if(!map) return;
   map.setMaxBounds(null); map.setMinZoom(0);
-  if(recenter || !map._loaded) map.setView(h.center, h.zoom, {animate:false});
-  map.setMinZoom(map.getBoundsZoom(area));   // dézoom max = toute la zone visible
-  map.setMaxBounds(area);                    // verrouille le déplacement sur la zone
-  updateZoomClass();
+  map.invalidateSize();
+  if(map.getSize().x < 50) return;   // carte cachée (onglet non actif) -> on recadrera au retour
+  const c=CITES[activeCite];
+  if(c.edges){
+    const W=map.getSize().x, crs=map.options.crs;
+    const xl=crs.latLngToPoint(L.latLng(c.edges.left),0).x;
+    const xr=crs.latLngToPoint(L.latLng(c.edges.right),0).x;
+    const z=Math.log2(W/(xr-xl));
+    map.setView([(c.edges.left[0]+c.edges.right[0])/2,(c.edges.left[1]+c.edges.right[1])/2], z, {animate:false});
+  } else if(c.bounds){
+    map.fitBounds(c.bounds, {padding:[18,18]});
+  }
+  map.setMinZoom(map.getZoom());
+  map.setMaxBounds(map.getBounds());
+  framedCite = activeCite;
 }
-// vue large : pastilles réduites, entrées "+" masquées
-function updateZoomClass(){
-  document.getElementById('map').classList.toggle('far', map.getZoom() < homeZoom - 0.8);
+function switchCite(id){
+  if(!CITES[id]) return;
+  activeCite=id; try{localStorage.setItem('cite',id);}catch(e){}
+  const sel=document.getElementById('citeSelect'); if(sel) sel.value=id;
+  if(mapVisible()) frameCite();   // sinon : recadré au retour sur l'onglet Carte
+  render();
 }
-function goHome(){ const h = homeView(); map.flyTo(h.center, h.zoom, {duration:.5}); }
-
+// remplit le menu déroulant des cités
+function initCiteSelector(){
+  const sel=document.getElementById('citeSelect'); if(!sel) return;
+  sel.innerHTML='';
+  Object.keys(CITES).forEach(id=>{
+    const o=document.createElement('option'); o.value=id; o.textContent=CITES[id].name; sel.appendChild(o);
+  });
+  sel.value=activeCite;
+}
 try {
   if(typeof L === 'undefined') throw new Error('Leaflet non chargé');
-  map = L.map('map',{
-    zoomControl:true,
-    zoomSnap:0,               // zoom fractionnaire -> cadrage exact au pixel
-    zoomDelta:0.5,
-    maxBoundsViscosity:1.0,   // bord "dur" : la carte reste sur la zone
-    preferCanvas:true         // contours d'immeubles en canvas, plus léger que le SVG
-  });
-  // Fond épuré sans pictos de commerces (rues + noms + bâtiments)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:22, maxNativeZoom:20, subdomains:'abcd', keepBuffer:4,
-    attribution:'© OpenStreetMap © CARTO'
-  }).addTo(map);
-  // bouton ⌂ : revenir sur la cité
-  const Home = L.Control.extend({ options:{position:'topleft'}, onAdd(){
-    const el = L.DomUtil.create('div','leaflet-bar');
-    el.innerHTML = '<a href="#" role="button" title="Recentrer sur la cité" style="font-size:16px">⌂</a>';
-    L.DomEvent.on(el,'click',e=>{ L.DomEvent.stop(e); goHome(); });
-    return el;
-  }});
-  map.addControl(new Home());
-  frameMap(true);
-  // resize (rotation, clavier mobile…) : on ajuste les limites sans faire sauter la vue
-  let rzT; window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT = setTimeout(()=>frameMap(false), 150); });
-  map.on('zoomend', updateZoomClass);
-  // taper un porche manqué -> cage (seulement sur la cité, pas en vue large)
-  map.on('click', e=>{ if(map.getZoom() >= homeZoom - 0.8) openCageModal(e.latlng.lat, e.latlng.lng, 4); });
-  document.getElementById('hint').textContent = 'Touchez un porche pour ajouter une cage';
-  setTimeout(()=>document.getElementById('hint').style.display='none', 6000);
+  map = L.map('map',{ zoomControl:true, zoomSnap:0, maxBoundsViscosity:1.0 });
+  setBasemap(currentBase);   // fond de carte (plan épuré / satellite)
+  frameCite();
+  window.addEventListener('resize', frameCite);
+  loadBuildings();
+  map.on('click', e=> openCageModal(e.latlng.lat, e.latlng.lng, 4));  // taper un porche manqué -> cage
 } catch(err){
-  map = null;
   document.getElementById('mapWrap').innerHTML =
     '<div class="empty">La carte n\'a pas pu se charger.<br>Utilise l\'onglet Bâtiments pour ajouter/gérer tes bâtiments.<br><br><button class="btn" style="max-width:240px;margin:0 auto" onclick="pendingLatLng=null;openOv(\'ovBuilding\')">+ Ajouter un bâtiment</button></div>';
 }
-
-/* ---------- Cages : numéro figé par square ---------- */
-// M = Square des Moulineaux (nord), A = Square de l'Avre (sud)
-const squareOf = lat => lat>48.8283 ? 'M' : 'A';
-const SQNAME = {M:'Moulineaux', A:'Avre'};
+// P = Place Haute (ouest, lon<2.245) ; sinon M = Moulineaux (nord) / A = Avre (sud)
+const squareOf = (lat,lng) => (lng!=null && lng<2.245) ? 'P' : (lat>48.8283 ? 'M' : 'A');
 // une cage est "faite" quand toutes ses portes ont été traitées
 const cageDone = b => b.doors.length>0 && b.doors.every(d=>d.status!=='todo');
-const doneCount = b => b.doors.reduce((n,d)=>n+(d.status!=='todo'),0);
+const SQNAME={M:'Moulineaux', A:'Avre', P:'Place Haute'};
 // plus petit numéro libre dans un square
 function nextCageNum(sq){
-  const used = new Set(DB.buildings.filter(b=>b.sq===sq&&b.num).map(b=>b.num));
-  let n=1; while(used.has(n)) n++; return n;
+  const used=new Set(DB.buildings.filter(b=>b.sq===sq&&b.num).map(b=>b.num));
+  let n=1; while(used.has(n))n++; return n;
 }
 // attribue UNE FOIS un numéro figé aux cages qui n'en ont pas encore (migration + sécurité)
 function ensureCageNumbers(){
-  let changed=false; const g={M:[],A:[]};
-  DB.buildings.forEach(b=>{ if(!b.sq){ b.sq=squareOf(b.lat); changed=true; } g[b.sq].push(b); });
-  ['M','A'].forEach(sq=>{
-    const used = new Set(g[sq].filter(b=>b.num).map(b=>b.num));
+  let changed=false; const g={};
+  DB.buildings.forEach(b=>{ if(!b.sq){b.sq=squareOf(b.lat,b.lng);changed=true;} (g[b.sq]||(g[b.sq]=[])).push(b); });
+  Object.keys(g).forEach(sq=>{
+    const used=new Set(g[sq].filter(b=>b.num).map(b=>b.num));
     g[sq].filter(b=>!b.num).sort((a,b)=> b.lat-a.lat || a.lng-b.lng).forEach(b=>{
-      let n=1; while(used.has(n)) n++; b.num=n; used.add(n); changed=true;
+      let n=1; while(used.has(n))n++; b.num=n; used.add(n); changed=true;
     });
   });
   if(changed) save();
 }
 // numéros en double dans un même square -> ensemble de clés "sq-num"
 function cageConflicts(){
-  const seen=new Set(), dup=new Set();
-  DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen.has(k)) dup.add(k); seen.add(k); } });
+  const seen={}, dup=new Set();
+  DB.buildings.forEach(b=>{ if(b.num){ const k=b.sq+'-'+b.num; if(seen[k])dup.add(k); seen[k]=true; } });
   return dup;
 }
-let conflicts = new Set();
-function refreshNumbers(){ ensureCageNumbers(); conflicts = cageConflicts(); }
-const isConflict = b => conflicts.has(b.sq+'-'+b.num);
+function pastilleIcon(text, sq, color){
+  return L.divIcon({className:'', iconSize:[34,34], iconAnchor:[17,17], html:
+    `<div style="width:34px;height:34px;border-radius:50%;background:${color};color:#fff;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      box-shadow:0 1px 4px rgba(0,0,0,.45);border:2px solid #fff;line-height:1">
+      <span style="font-size:14px;font-weight:700;margin-top:1px">${text}</span>
+      <span style="font-size:11px;font-weight:700;margin-top:-2px;letter-spacing:.5px">${sq}</span>
+    </div>`});
+}
+let markerLayer=null, cageLabelById={};
+// cages créées (numéro figé) + détections restantes ("+"). Renseigne cageLabelById.
+function buildEntries(){
+  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;   // filet de sécurité (timing)
+  ensureCageNumbers();
+  const dup=cageConflicts();
+  const entries=[];
+  DB.buildings.forEach(b=>{ if(b.lat!=null) entries.push({lat:b.lat,lng:b.lng,kind:'cage',b,num:b.num,sq:b.sq,conflict:dup.has(b.sq+'-'+b.num)}); });
+  if(buildingsData) buildingsData.forEach(bd=>{
+    if(polyAreaM2(bd.coords)<DET.minArea) return;
+    detectEntrances(bd.coords).forEach(pt=>{
+      if(isCage(pt)||isDismissed(pt)) return;
+      entries.push({lat:pt[0],lng:pt[1],kind:'cand',levels:bd.levels,sq:squareOf(pt[0],pt[1])});
+    });
+  });
+  cageLabelById={};
+  entries.forEach(e=>{ if(e.kind==='cage') cageLabelById[e.b.id]={num:e.num,sq:e.sq,conflict:e.conflict}; });
+  return entries;
+}
 // nom lisible d'une cage : "Cage 3 — Moulineaux" (astérisque si numéro en double)
-const cageLabel = b => b.num ? `Cage ${b.num}${isConflict(b)?' *':''} — ${SQNAME[b.sq]}` : (b.addr||'Cage');
+function cageLabel(b){
+  const l=cageLabelById[b.id];
+  return l ? `Cage ${l.num}${l.conflict?' *':''} — ${SQNAME[l.sq]}` : (b.addr||'Cage');
+}
+// dessine TOUT : cages (numéro figé) + entrées détectées ("+")
+function drawMarkers(){
+  if(!map) return;
+  if(markerLayer) map.removeLayer(markerLayer);
+  markerLayer=L.layerGroup().addTo(map);
+  buildEntries().forEach(e=>{
+    const done = e.kind==='cage' && cageDone(e.b);
+    const color = done ? '#378ADD' : '#EF9F27';   // bleu = faite, orange = pas faite
+    const text = e.kind==='cage' ? (e.num + (e.conflict?'*':'')) : '+';
+    const m = L.marker([e.lat,e.lng],{icon:pastilleIcon(text,e.sq,color)}).addTo(markerLayer);
+    if(e.kind==='cage'){ m.on('click',()=>openDetail(e.b.id)); }
+    else m.bindPopup('<div style="text-align:center;font:13px sans-serif;min-width:130px">Entrée de cage&nbsp;?'+
+      '<div style="margin-top:8px"><button onclick="createCageAt('+e.lat+','+e.lng+','+(e.levels||4)+')" style="padding:7px 10px;margin:0 3px;border:0;border-radius:7px;background:#378ADD;color:#fff;font-weight:600">Créer</button>'+
+      '<button onclick="dismissCandidate('+e.lat+','+e.lng+')" style="padding:7px 10px;margin:0 3px;border:1px solid #d5d8dd;border-radius:7px;background:#f4f5f7">Retirer</button></div></div>');
+  });
+}
+// corriger le numéro / square figé d'une cage
+function setCageNum(id,val){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  const n=parseInt(val,10); if(n>0) b.num=n; save(); renderDetail(); drawMarkers();
+}
+function setCageSquare(id,sq){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  b.sq=sq; save(); renderDetail(); drawMarkers();
+}
 
 /* ---------- Contours immeubles + détection des cages d'escalier ---------- */
-const DET = {apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
-let buildingsData = window.BUILDINGS_DATA || null;
-let candidates = null;   // entrées détectées, calculées une seule fois (la géométrie ne bouge pas)
+let outlineLayer=null, candLayer=null, buildingsData=null;
+const DET={apexMin:1.5, apexMax:12, flank:7, conv:50, merge:6, minArea:250};
+if(!DB.dismissed) DB.dismissed=[];   // entrées auto retirées à la main
 
 function projM(coords){
   const lat0=coords[0][0]*Math.PI/180, mLat=111320, mLon=111320*Math.cos(lat0);
   const p=coords.map(([la,lo])=>[(lo-coords[0][1])*mLon,(la-coords[0][0])*mLat]);
-  if(p.length>1){ const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01) p.pop(); }
+  if(p.length>1){const a=p[0],z=p[p.length-1]; if(Math.hypot(a[0]-z[0],a[1]-z[1])<0.01)p.pop();}
   return {p,mLat,mLon};
 }
-function signedArea(p){
-  let a=0; const n=p.length;
-  for(let i=0;i<n;i++){ const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n]; a+=x1*y2-x2*y1; }
-  return a/2;
+function polyAreaM2(coords){
+  const {p}=projM(coords); let a=0,n=p.length;
+  for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];a+=x1*y2-x2*y1;}
+  return Math.abs(a/2);
 }
 // Détecte les entrées (redans) -> [[lat,lon],...]
 function detectEntrances(coords){
-  const {p,mLat,mLon}=projM(coords); const n=p.length;
-  if(n<6 || Math.abs(signedArea(p))<DET.minArea) return [];
-  const ccw=signedArea(p)>0;
+  const {p,mLat,mLon}=projM(coords); const n=p.length; if(n<6)return [];
+  let area=0; for(let i=0;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];area+=x1*y2-x2*y1;}
+  const ccw=area>0;
   const len=i=>{const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n];return Math.hypot(x2-x1,y2-y1);};
   const turn=i=>{const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n];
     const ax=b[0]-a[0],ay=b[1]-a[1],bx=c[0]-b[0],by=c[1]-b[1];
-    const t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
+    let t=Math.atan2(ax*by-ay*bx,ax*bx+ay*by)*180/Math.PI; return ccw?t:-t;};
   const cand=[];
   for(let i=0;i<n;i++){
-    const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax) continue;
-    if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv) continue;              // deux coins convexes
-    if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank) continue;      // côtés = profondeur du porche
-    const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
-    const dx=(b[0]-a[0])/eLen, dy=(b[1]-a[1])/eLen;
-    const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                 // normale extérieure
-    const e=[mx+nx*1.6, my+ny*1.6];
-    if(!cand.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge)) cand.push(e);
+    const eLen=len(i); if(eLen<DET.apexMin||eLen>DET.apexMax)continue;
+    if(turn(i)<DET.conv||turn((i+1)%n)<DET.conv)continue;              // deux coins convexes
+    if(len((i-1+n)%n)>DET.flank||len((i+1)%n)>DET.flank)continue;      // côtés = profondeur du porche
+    const a=p[i],b=p[(i+1)%n], mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+    let dx=b[0]-a[0],dy=b[1]-a[1]; const dl=Math.hypot(dx,dy); dx/=dl;dy/=dl;
+    const nx=ccw?dy:-dy, ny=ccw?-dx:dx;                                // normale extérieure
+    cand.push([mx+nx*1.6, my+ny*1.6]);
   }
-  return cand.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
+  const merged=[]; cand.forEach(e=>{ if(!merged.some(m=>Math.hypot(m[0]-e[0],m[1]-e[1])<DET.merge))merged.push(e); });
+  return merged.map(e=>[coords[0][0]+e[1]/mLat, coords[0][1]+e[0]/mLon]);
 }
-function getCandidates(){
-  if(!candidates && buildingsData)
-    candidates = buildingsData.flatMap(bd=>detectEntrances(bd.coords).map(pt=>({lat:pt[0],lng:pt[1],levels:bd.levels||4})));
-  return candidates || [];
+function nearM(pt,lat,lng,m){
+  const mLat=111320, mLon=111320*Math.cos(lat*Math.PI/180);
+  return Math.hypot((pt[0]-lat)*mLat,(pt[1]-lng)*mLon)<m;
 }
-function nearM(lat1,lng1,lat2,lng2,m){
-  const mLon=111320*Math.cos(lat2*Math.PI/180);
-  return Math.hypot((lat1-lat2)*111320,(lng1-lng2)*mLon)<m;
-}
-const isCage = c => DB.buildings.some(b=>b.lat!=null && nearM(c.lat,c.lng,b.lat,b.lng,5));
-const isDismissed = c => DB.dismissed.some(d=>nearM(c.lat,c.lng,d[0],d[1],5));
+const isCage=pt=>DB.buildings.some(b=>b.lat&&nearM(pt,b.lat,b.lng,5));
+const isDismissed=pt=>DB.dismissed.some(d=>nearM(pt,d.lat,d.lng,5));
 
-// dessine les contours une seule fois
-function ensureOutlines(){
-  if(!map || outlineLayer || !buildingsData) return;
-  outlineLayer = L.layerGroup(buildingsData.map(b=>L.polygon(b.coords,
-    {color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}))).addTo(map);
-}
-function pastilleIcon(text, sq, cls){
-  return L.divIcon({className:'pin '+cls, iconSize:[34,34], iconAnchor:[17,17],
-    html:`<div class="pin-in"><b>${text}</b><i>${sq}</i></div>`});
-}
-// dessine TOUT : cages (numéro figé, bleu = faite / orange = pas faite) + entrées détectées ("+")
-function drawMarkers(){
+async function loadBuildings(){
   if(!map) return;
+  buildingsData = window.BUILDINGS_DATA || buildingsData;   // intégré (marche en double-clic, sans serveur)
+  if(!buildingsData){ try{ buildingsData=await (await fetch('data/buildings.json')).json(); }catch(e){} }
   ensureOutlines();
-  const ms=[];
-  DB.buildings.forEach(b=>{
-    if(b.lat==null) return;
-    const m=L.marker([b.lat,b.lng],{icon:pastilleIcon(b.num+(isConflict(b)?'*':''), b.sq, cageDone(b)?'done':'todo')});
-    m.on('click',()=>openDetail(b.id)); ms.push(m);
-  });
-  getCandidates().forEach(c=>{
-    if(isCage(c)||isDismissed(c)) return;
-    ms.push(L.marker([c.lat,c.lng],{icon:pastilleIcon('+', squareOf(c.lat), 'todo cand')})
-      .bindPopup(`<div class="cpop">Entrée de cage&nbsp;?<div>
-        <button class="ok" onclick="openCageModal(${c.lat},${c.lng},${c.levels})">Créer</button>
-        <button onclick="dismissCandidate(${c.lat},${c.lng})">Retirer</button></div></div>`));
-  });
-  if(markerLayer) map.removeLayer(markerLayer);
-  markerLayer = L.layerGroup(ms).addTo(map);
+  drawMarkers();
 }
-// données des contours : intégrées (double-clic, sans serveur), sinon fichier json
-if(map && !buildingsData)
-  fetch('data/buildings.json').then(r=>r.json()).then(d=>{ buildingsData=d; drawMarkers(); }).catch(()=>{});
-
-// ouvre la fenêtre "nouvelle cage" : square par défaut selon la position, numéro suggéré
+// dessine les contours une seule fois, dès que les données sont dispo (robuste au timing de chargement)
+function ensureOutlines(){
+  if(!map || outlineLayer) return;
+  if(!buildingsData) buildingsData = window.BUILDINGS_DATA || null;
+  if(!buildingsData) return;
+  outlineLayer=L.layerGroup().addTo(map);
+  buildingsData.forEach(b=>L.polygon(b.coords,{color:'#5b6b7a',weight:1,fillColor:'#5b6b7a',fillOpacity:0.06,interactive:false}).addTo(outlineLayer));
+}
+// compat : tout est dessiné par drawMarkers désormais
+function refreshEntrances(){ drawMarkers(); }
+// depuis le menu d'une pastille : ouvrir la création de cage pré-remplie
+let pendingSquare='M';
 function pickSquare(sq){
   pendingSquare=sq;
-  document.getElementById('sqM').classList.toggle('sel', sq==='M');
-  document.getElementById('sqA').classList.toggle('sel', sq==='A');
+  [...document.querySelectorAll('#sqButtons .sqbtn')].forEach(b=>b.classList.toggle('sel', b.dataset.sq===sq));
   document.getElementById('fNum').value = nextCageNum(sq);   // numéro suggéré = 1er libre
 }
+// construit les boutons de square selon la cité active
+function buildSquareButtons(){
+  const cont=document.getElementById('sqButtons'); cont.innerHTML='';
+  CITES[activeCite].squares.forEach(s=>{
+    const b=document.createElement('button');
+    b.type='button'; b.className='sqbtn'; b.dataset.sq=s;
+    b.textContent=SQNAME[s]; b.onclick=()=>pickSquare(s);
+    cont.appendChild(b);
+  });
+}
+// ouvre la fenêtre "nouvelle cage" : square par défaut selon la position, numéro suggéré
 function openCageModal(lat,lng,levels){
   if(map) map.closePopup();
   pendingLatLng={lat,lng};
-  pickSquare(squareOf(lat));
+  buildSquareButtons();
+  let def=squareOf(lat,lng);
+  if(!CITES[activeCite].squares.includes(def)) def=CITES[activeCite].squares[0];
+  pickSquare(def);
   document.getElementById('fFloors').value = levels||4;
   document.getElementById('fDoors').value = 2;
   openOv('ovBuilding');
 }
+function createCageAt(lat,lng,levels){ openCageModal(lat,lng,levels); }
 // retirer définitivement une pastille auto erronée
 function dismissCandidate(lat,lng){
   map.closePopup();
-  DB.dismissed.push([lat,lng]); save(); drawMarkers();
+  DB.dismissed.push({lat,lng}); save();
+  refreshEntrances();
 }
 
-/* ---------- Création / édition d'une cage ---------- */
-const newDoor = (floor,index) => ({floor, index, status:'todo', note:'', date:'', by:''});
+/* ---------- Création bâtiment ---------- */
 function createBuilding(){
   const nf = Math.max(1, +document.getElementById('fFloors').value||1);
   const nd = Math.max(1, +document.getElementById('fDoors').value||1);
-  const ll = pendingLatLng || (map ? map.getCenter() : {lat:48.8283,lng:2.2521});
-  const sq = pendingSquare;
-  const num = Math.max(1, +document.getElementById('fNum').value || nextCageNum(sq));
+  const ll = pendingLatLng || (map ? map.getCenter() : {lat:48.8566,lng:2.3522});
+  const sq = pendingSquare;                                   // square choisi dans la fenêtre
+  const num = Math.max(1, +document.getElementById('fNum').value || nextCageNum(sq));  // numéro saisi
   const doors = [];
-  for(let f=0; f<nf; f++) for(let i=0; i<nd; i++) doors.push(newDoor(f,i));
+  for(let f=0; f<nf; f++) for(let i=0; i<nd; i++)
+    doors.push({floor:f, index:i, status:'todo', note:'', date:'', by:''});
   DB.buildings.push({id:'b'+Date.now(), addr:"Cage d'escalier", sector:'', floors:nf, perFloor:nd, lat:ll.lat, lng:ll.lng, sq, num, doors});
   save(); closeOv('ovBuilding'); render();
 }
-// toute modification d'une cage : sauvegarde + rafraîchit détail, carte et compteur
-function commit(){ save(); refreshNumbers(); renderDetail(); drawMarkers(); updateHeader(); }
-function setCageNum(id,val){
-  const b=findB(id), n=parseInt(val,10); if(!b) return;
-  if(n>0) b.num=n; commit();
-}
-function setCageSquare(id,sq){ const b=findB(id); if(b){ b.sq=sq; commit(); } }
-function setCageNote(id,val){ const b=findB(id); if(b){ b.note=val; save(); } }
-function addFloor(id){
-  const b=findB(id); if(!b) return;
-  const per=Math.max(1,b.perFloor||2);
-  for(let i=0;i<per;i++) b.doors.push(newDoor(b.floors,i));
-  b.floors++; commit();
-}
-function addDoorToFloor(id,floor){
-  const b=findB(id); if(!b) return;
-  const idxs=b.doors.filter(d=>d.floor===floor).map(d=>d.index);
-  b.doors.push(newDoor(floor, idxs.length?Math.max(...idxs)+1:0)); commit();
-}
-function deleteFloor(id,floor){
-  const b=findB(id); if(!b) return;
-  if(b.floors<=1){ alert('Une cage doit garder au moins un étage.'); return; }
-  if(!confirm('Êtes-vous sûr de vouloir supprimer cet étage ?')) return;
-  b.doors = b.doors.filter(d=>d.floor!==floor);
-  b.doors.forEach(d=>{ if(d.floor>floor) d.floor--; });   // décale les étages au-dessus
-  b.floors--; commit();
-}
-function deleteBuilding(id){
-  if(!confirm('Êtes-vous sûr de vouloir supprimer le bâtiment ?')) return;
-  DB.buildings = DB.buildings.filter(b=>b.id!==id);
-  curBuilding=null; save(); setTab('list'); render();
-}
 
-/* ---------- Détail d'une cage ---------- */
+/* ---------- Détail bâtiment ---------- */
 function openDetail(id){
-  curBuilding = findB(id);
-  setTab('detail'); renderDetail();
+  curBuilding = DB.buildings.find(b=>b.id===id);
+  setTab('detail');
+  renderDetail();
 }
 // recherche "3M" / "5 A" -> ouvre la cage n°3 du square M
 function goToCage(){
   const el=document.getElementById('search');
   const v=(el.value||'').toUpperCase();
   const num=parseInt((v.match(/\d+/)||[])[0],10);
-  const sq=(v.match(/[MA]/)||[])[0];
-  const b=(num&&sq) ? DB.buildings.find(x=>x.num===num&&x.sq===sq) : null;
+  const sq=(v.match(/[A-Z]/)||[])[0];
+  const b=(num&&sq)?DB.buildings.find(x=>x.num===num&&x.sq===sq):null;
   if(b){ el.value=''; el.blur(); openDetail(b.id); }
-  else el.style.borderColor='#E24B4A';   // introuvable
+  else { el.style.borderColor='#E24B4A'; }   // introuvable
 }
-const floorName = f => f===0 ? 'RDC' : f===1 ? '1er' : f+'e';
-function progressCard(b, long){
-  const done=doneCount(b), n=b.doors.length;
-  return `<div class="row">
-      <div class="bicon">🏢</div>
-      <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} ${long?'étages':'ét.'} · ${n} portes${b.sector?' · '+esc(b.sector):''}</p></div>
-      <div class="count"><b>${done}/${n}</b>${long?'<div class="sub">visitées</div>':''}</div>
-    </div><div class="bar"><span style="width:${n?done/n*100:0}%"></span></div>`;
-}
+function floorName(f){ return f===0?'RDC':(f+'e'==='1e'?'1er':f+'e'); }
 function renderDetail(){
   const b = curBuilding; if(!b) return;
-  const on = sq => b.sq===sq ? 'background:#EF9F27;color:#fff' : '';
-  let html = `<button class="back" onclick="setTab('list');render()">← Retour</button>
-    <div class="bcard" style="cursor:default">${progressCard(b,true)}</div>
-    <div class="bcard" style="cursor:default;margin-top:-2px">
+  if(!cageLabelById[b.id]) buildEntries();
+  const done = b.doors.filter(d=>d.status!=='todo').length;
+  let html = `<button class="back" onclick="setTab('list');render()">← Retour</button>`;
+  html += `<div class="bcard" style="cursor:default"><div class="row">
+      <div class="bicon">🏢</div>
+      <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} étages · ${b.doors.length} portes${b.sector?' · '+esc(b.sector):''}</p></div>
+      <div class="count"><b>${done}/${b.doors.length}</b><div class="sub">visitées</div></div>
+    </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
+  // correction du numéro figé + square
+  const lbl = cageLabelById[b.id] || {num:b.num, sq:b.sq, conflict:false};
+  html += `<div class="bcard" style="cursor:default;margin-top:-2px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#6b7280">
         <span>N° de cage</span>
-        <input type="number" min="1" value="${b.num||''}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
+        <input type="number" min="1" value="${lbl.num}" style="width:72px;padding:8px" onchange="setCageNum('${b.id}',this.value)" />
         <span>Square</span>
-        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${on('M')}" onclick="setCageSquare('${b.id}','M')">M</button>
-        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${on('A')}" onclick="setCageSquare('${b.id}','A')">A</button>
+        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='M'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','M')">M</button>
+        <button class="btn ghost" style="width:auto;margin:0;padding:8px 14px;${b.sq==='A'?'background:#EF9F27;color:#fff':''}" onclick="setCageSquare('${b.id}','A')">A</button>
       </div>
-      ${isConflict(b)?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
+      ${lbl.conflict?`<div style="margin-top:8px;color:#E24B4A;font-size:13px">⚠ Numéro en double dans le square ${SQNAME[b.sq]} — corrige-le (astérisque affiché tant que le doublon existe).</div>`:''}
     </div>`;
   // étages de haut en bas — bouton + à gauche pour ajouter une porte à cet étage
   for(let f=b.floors-1; f>=0; f--){
@@ -494,35 +599,69 @@ function renderDetail(){
       <button class="addoor" title="Ajouter une porte à cet étage" onclick="addDoorToFloor('${b.id}',${f})">+</button>
       <div class="lab">${floorName(f)}</div><div class="doors">`;
     b.doors.filter(d=>d.floor===f).forEach(d=>{
-      const todo = d.status==='todo';
-      html += `<button class="door ${todo?'todo':''}" style="${todo?'':'background:'+colorOf(d.status)}"
+      const isTodo = d.status==='todo';
+      html += `<button class="door ${isTodo?'todo':''}" style="${isTodo?'':'background:'+colorOf(d.status)}"
                  onclick="openDoor('${b.id}',${d.floor},${d.index})" title="${esc(d.note)}">
                  🚪${d.note?'<span class="note-dot"></span>':''}</button>`;
     });
     html += `</div><button class="delfloor" title="Supprimer cet étage" onclick="deleteFloor('${b.id}',${f})">×</button></div>`;
   }
-  html += `<div class="legend">${STATUSES.map(s=>
-    `<span><span class="sw" style="background:${s.key==='todo'?'#f4f5f7;border:1px solid #cbd0d6':s.color}"></span>${s.label}</span>`).join('')}</div>
-    <label style="display:block;font-size:13px;color:#6b7280;margin:16px 0 4px">Notes</label>
-    <textarea id="cageNote" rows="3" placeholder="Digicode, remarques, à repasser…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;resize:vertical" onchange="setCageNote('${b.id}',this.value)">${esc(b.note)}</textarea>
-    <button class="btn ghost" style="margin-top:12px" onclick="addFloor('${b.id}')">+ Ajouter un étage</button>
-    <button class="btn ghost" style="margin-top:8px;color:#E24B4A;border-color:#f0b3b3" onclick="deleteBuilding('${b.id}')">Supprimer ce bâtiment</button>`;
+  html += `<div class="legend">`;
+  STATUSES.forEach(s=> html+=`<span><span class="sw" style="background:${s.key==='todo'?'#f4f5f7;border:1px solid #cbd0d6':s.color}"></span>${s.label}</span>`);
+  html += `</div>`;
+  // encart notes
+  html += `<label style="display:block;font-size:13px;color:#6b7280;margin:16px 0 4px">Notes</label>
+    <textarea id="cageNote" rows="3" placeholder="Digicode, remarques, à repasser…" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;resize:vertical" onchange="setCageNote('${b.id}',this.value)">${esc(b.note||'')}</textarea>`;
+  // actions
+  html += `<button class="btn ghost" style="margin-top:12px" onclick="addFloor('${b.id}')">+ Ajouter un étage</button>`;
+  html += `<button class="btn ghost" style="margin-top:8px;color:#E24B4A;border-color:#f0b3b3" onclick="deleteBuilding('${b.id}')">Supprimer ce bâtiment</button>`;
   document.getElementById('detail').innerHTML = html;
+}
+function addFloor(id){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  const f=b.floors, per=Math.max(1,b.perFloor||2);
+  for(let i=0;i<per;i++) b.doors.push({floor:f,index:i,status:'todo',note:'',date:'',by:''});
+  b.floors++; save(); renderDetail(); drawMarkers();
+}
+function addDoorToFloor(id,floor){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  const idxs=b.doors.filter(d=>d.floor===floor).map(d=>d.index);
+  const next=idxs.length?Math.max(...idxs)+1:0;
+  b.doors.push({floor,index:next,status:'todo',note:'',date:'',by:''});
+  save(); renderDetail(); drawMarkers();
+}
+function deleteFloor(id,floor){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  if(b.floors<=1){ alert('Une cage doit garder au moins un étage.'); return; }
+  if(!confirm('Êtes-vous sûr de vouloir supprimer cet étage ?'))return;
+  b.doors = b.doors.filter(d=>d.floor!==floor);
+  b.doors.forEach(d=>{ if(d.floor>floor) d.floor--; });   // décale les étages au-dessus
+  b.floors--; save(); renderDetail(); drawMarkers(); updateHeader();
+}
+function setCageNote(id,val){
+  const b=DB.buildings.find(x=>x.id===id); if(!b)return;
+  b.note=val; save();
+}
+function deleteBuilding(id){
+  if(!confirm('Êtes-vous sûr de vouloir supprimer le bâtiment ?'))return;
+  DB.buildings = DB.buildings.filter(b=>b.id!==id);
+  save(); setTab('list'); render();
 }
 
 /* ---------- Saisie porte ---------- */
 function openDoor(bid,floor,index){
-  const b = findB(bid);
-  const d = b && b.doors.find(x=>x.floor===floor && x.index===index); if(!d) return;
+  const b = DB.buildings.find(x=>x.id===bid);
+  const d = b.doors.find(x=>x.floor===floor && x.index===index);
   curDoor = {b,d};
+  curDoorStatus = d.status;
   document.getElementById('doorTitle').textContent = `${floorName(floor)} · porte ${index+1}`;
   document.getElementById('fNote').value = d.note||'';
   const grid = document.getElementById('statusGrid'); grid.innerHTML='';
   STATUSES.forEach(s=>{
     const btn = document.createElement('button');
     btn.textContent = s.label;
-    btn.style.background = s.color;
-    if(s.key===d.status) btn.classList.add('sel');
+    btn.style.background = s.key==='todo' ? '#9aa0a6' : s.color;
+    if(s.key===curDoorStatus) btn.classList.add('sel');
     btn.onclick = ()=> pickDoorStatus(s.key);   // taper un statut = enregistre + revient à la cage
     grid.appendChild(btn);
   });
@@ -535,26 +674,43 @@ function pickDoorStatus(status){
   d.status = status;
   d.note = document.getElementById('fNote').value.trim();
   d.date = status==='todo' ? '' : new Date().toISOString().slice(0,10);
-  closeOv('ovDoor'); commit();
+  save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
 }
 function deleteDoor(){
   if(!curDoor) return;
-  if(!confirm('Êtes-vous sûr de vouloir supprimer cette porte ?')) return;
-  const {b,d}=curDoor;
-  b.doors = b.doors.filter(x=>x!==d);
+  if(!confirm('Êtes-vous sûr de vouloir supprimer cette porte ?'))return;
+  const b=curDoor.b, d=curDoor.d;
+  b.doors = b.doors.filter(x=>!(x.floor===d.floor && x.index===d.index));
   // ré-indexe les portes restantes de cet étage (0,1,2…)
   b.doors.filter(x=>x.floor===d.floor).sort((a,c)=>a.index-c.index).forEach((x,i)=>x.index=i);
-  curDoor=null; closeOv('ovDoor'); commit();
+  save(); closeOv('ovDoor'); renderDetail(); drawMarkers(); updateHeader();
 }
 
-/* ---------- Liste + stats ---------- */
+/* ---------- Liste ---------- */
 function render(){
-  refreshNumbers();   // numérotation à jour avant tout affichage
+  buildEntries();   // met à jour la numérotation avant d'afficher la liste
   const list = document.getElementById('blist');
-  list.innerHTML = DB.buildings.length
-    ? DB.buildings.map(b=>`<div class="bcard" onclick="openDetail('${b.id}')">${progressCard(b,false)}</div>`).join('')
-    : `<div class="empty">Aucun bâtiment.<br>Va sur l'onglet Carte et touche un point pour en ajouter un.</div>`;
-  drawMarkers(); renderStats(); updateHeader();
+  const squares = CITES[activeCite] ? CITES[activeCite].squares : [];
+  const inCite = DB.buildings.filter(b=> squares.includes(b.sq));   // seulement la cité affichée sur la carte
+  // en-tête : cité active (cliquable pour changer)
+  let head = `<div class="citehead">`;
+  Object.keys(CITES).forEach(id=>{
+    head += `<button class="citetab ${id===activeCite?'sel':''}" onclick="switchCite('${id}')">${CITES[id].name}</button>`;
+  });
+  head += `</div>`;
+  if(!inCite.length){
+    list.innerHTML = head + `<div class="empty">Aucune cage dans « ${esc(CITES[activeCite].name)} ».<br>Va sur l'onglet Carte et touche un porche pour en ajouter.</div>`;
+  } else {
+    list.innerHTML = head + inCite.map(b=>{
+      const done = b.doors.filter(d=>d.status!=='todo').length;
+      return `<div class="bcard" onclick="openDetail('${b.id}')"><div class="row">
+        <div class="bicon">🏢</div>
+        <div><p class="name">${esc(cageLabel(b))}</p><p class="sub">${b.floors} ét. · ${b.doors.length} portes${b.sector?' · '+esc(b.sector):''}</p></div>
+        <div class="count"><b>${done}/${b.doors.length}</b></div>
+      </div><div class="bar"><span style="width:${b.doors.length?done/b.doors.length*100:0}%"></span></div></div>`;
+    }).join('');
+  }
+  ensureOutlines(); drawMarkers(); renderStats(); updateHeader();
 }
 function updateHeader(){
   const all = DB.buildings.flatMap(b=>b.doors);
@@ -562,27 +718,26 @@ function updateHeader(){
   document.getElementById('hstat').textContent = DB.buildings.length ? `${done}/${all.length} portes` : '';
 }
 function renderStats(){
-  const by = {}; let total=0;
-  DB.buildings.forEach(b=>b.doors.forEach(d=>{ by[d.status]=(by[d.status]||0)+1; total++; }));
+  const all = DB.buildings.flatMap(b=>b.doors);
+  const by = k => all.filter(d=>d.status===k).length;
+  const m = document.getElementById('metrics');
   const cards = [
     {n:DB.buildings.length, l:'Bâtiments'},
-    {n:total, l:'Portes totales'},
-    {n:by.interesse||0, l:'Intéressés', c:'#1D9E75'},
-    {n:by.refus||0, l:'Refus', c:'#E24B4A'},
-    {n:by.absent||0, l:'Absents', c:'#EF9F27'},
-    {n:by.todo||0, l:'À faire', c:'#9aa0a6'},
+    {n:all.length, l:'Portes totales'},
+    {n:by('interesse'), l:'Intéressés', c:'#1D9E75'},
+    {n:by('refus'), l:'Refus', c:'#E24B4A'},
+    {n:by('absent'), l:'Absents', c:'#EF9F27'},
+    {n:by('todo'), l:'À faire', c:'#9aa0a6'},
   ];
-  document.getElementById('metrics').innerHTML = cards.map(c=>
-    `<div class="metric"><div class="n" style="${c.c?'color:'+c.c:''}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
+  m.innerHTML = cards.map(c=>`<div class="metric"><div class="n" style="${c.c?'color:'+c.c:''}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
 }
 
-/* ---------- Export / sauvegarde ---------- */
+/* ---------- Export CSV ---------- */
 function download(name, text, type){
-  const a=document.createElement('a'), url=URL.createObjectURL(new Blob([text],{type}));
-  a.href=url; a.download=name; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type}));
+  a.download=name; a.click();
 }
-const today = () => new Date().toISOString().slice(0,10);
 function exportCSV(){
   const rows = [['Batiment','Secteur','Etage','Porte','Statut','Note','Date','Lat','Lng']];
   DB.buildings.forEach(b=> b.doors.forEach(d=>
@@ -590,15 +745,33 @@ function exportCSV(){
                b.lat!=null?b.lat.toFixed(7):'', b.lng!=null?b.lng.toFixed(7):''])
   ));
   const csv = '﻿'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
-  download('porte-a-porte-'+today()+'.csv', csv, 'text/csv');
+  download('porte-a-porte-'+new Date().toISOString().slice(0,10)+'.csv', csv, 'text/csv');
 }
 // Sauvegarde complète (cages + portes + pastilles retirées) dans un fichier .json
 function backupJSON(){
-  download('porte-a-porte-sauvegarde-'+today()+'.json', JSON.stringify(DB,null,2), 'application/json');
+  download('porte-a-porte-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json',
+           JSON.stringify(DB,null,2), 'application/json');
+}
+/* ---------- Installation PWA ---------- */
+let deferredPrompt=null;
+function isStandalone(){ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true; }
+async function installAndroid(){
+  if(isStandalone()){ alert("L'application est déjà installée ✅"); return; }
+  if(deferredPrompt){                       // Chrome/Android : invite native directe
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt=null;
+  } else {                                  // sinon : marche à suivre manuelle
+    alert("Installer sur Android :\n\n1. Ouvre le menu ⋮ (en haut à droite de Chrome)\n2. Touche « Installer l'application » (ou « Ajouter à l'écran d'accueil »)\n\nAstuce : ouvre bien le site dans Chrome, et si tu ne vois pas l'option, l'app est peut-être déjà installée.");
+  }
+}
+function installApple(){
+  if(isStandalone()){ alert("L'application est déjà installée ✅"); return; }
+  alert("Installer sur iPhone / iPad :\n\n1. Ouvre le site dans Safari\n2. Touche le bouton Partager ⬆️ (en bas de l'écran)\n3. Fais défiler et touche « Sur l'écran d'accueil »\n4. Touche « Ajouter »");
 }
 // remet toutes les portes à "À faire" — garde cages, étages, portes et notes
 function resetStates(){
-  if(!confirm('Remettre toutes les portes à « À faire » ?\nLes cages, étages, portes et notes sont conservés.')) return;
+  if(!confirm('Remettre toutes les portes à « À faire » ?\nLes cages, étages, portes et notes sont conservés.'))return;
   DB.buildings.forEach(b=>b.doors.forEach(d=>{ d.status='todo'; d.date=''; d.by=''; }));
   save(); render();
 }
@@ -610,7 +783,8 @@ function restoreJSON(input){
     const d=JSON.parse(r.result);
     if(!d||!Array.isArray(d.buildings)) throw 0;
     if(!d.dismissed) d.dismissed=[];
-    DB=d; curBuilding=null; save(); setTab('map'); render();
+    d.dismissed = d.dismissed.map(x=>Array.isArray(x)?{lat:x[0],lng:x[1]}:x);
+    DB=d; save(); setTab('map'); render();
     alert('Sauvegarde chargée : '+DB.buildings.length+' cage(s).');
   }catch(e){ alert('Fichier invalide.'); } };
   r.readAsText(file);
@@ -618,18 +792,28 @@ function restoreJSON(input){
 }
 
 /* ---------- UI helpers ---------- */
-function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function openOv(id){ document.getElementById(id).classList.add('show'); }
-function closeOv(id){ document.getElementById(id).classList.remove('show'); }
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function openOv(id){document.getElementById(id).classList.add('show')}
+function closeOv(id){document.getElementById(id).classList.remove('show')}
 function setTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+tab));
-  if(tab==='map' && map) setTimeout(()=>frameMap(false),50);   // la carte a pu changer de taille pendant qu'elle était masquée
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='map' && map) setTimeout(()=>{ if(framedCite!==activeCite) frameCite(); else map.invalidateSize(); },60);
 }
 document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>{ setTab(b.dataset.tab); render(); });
 document.querySelectorAll('.overlay').forEach(o=> o.onclick=e=>{ if(e.target===o) o.classList.remove('show'); });
 
+initCiteSelector();
 render();
+initFirebase();
+// PWA : installe le service worker (hors-ligne + installation). Ignoré en file:// (normal).
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+// capture l'invite d'installation Android/Chrome pour la déclencher via le bouton
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredPrompt=e; });
+window.addEventListener('appinstalled', ()=>{ deferredPrompt=null; });
 </script>
 </body>
 </html>
